@@ -10,9 +10,10 @@ import {
     WrappedAudioBuffer,
 } from 'mediabunny';
 import {TypedEvent, TypedEventTarget} from './typed-events';
-import {NtscEffectBuf, ResizeFilter} from 'ntsc-rs-web-wrapper';
+import {ResizeFilter} from 'ntsc-rs-web-wrapper';
 import {SETTINGS_LIST} from '../app-state';
-import Queuetex from './async-queue';
+import EffectWorkerPool from './effect-worker-pool';
+import type {RenderFrame} from './effect-worker.worker';
 
 export class FrameEvent extends TypedEvent<'frame'> {
     frameTimestamp: number;
@@ -34,10 +35,12 @@ export class StateChangeEvent extends TypedEvent<'statechange'> {
     }
 }
 
-const assertEffect = (effect: NtscEffectBuf | null): NtscEffectBuf => {
-    if (!effect) throw new DOMException('MediaPlayer has already been closed', 'InvalidStateError');
-    return effect;
-};
+type PresentationNode = {
+    promise: Promise<ImageBitmap | null>;
+    timestamp: number;
+    duration: number;
+    next: PresentationNode;
+} | null;
 
 export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChangeEvent> {
     private input: Input;
@@ -57,8 +60,14 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     private generation = 0;
     private currentFrame: VideoSample | null = null;
     private _canvas: HTMLCanvasElement | null = null;
-    private ctx: CanvasRenderingContext2D | null = null;
-    private ntscEffect: Queuetex<NtscEffectBuf | null>;
+    private ctx: ImageBitmapRenderingContext | null = null;
+    private effectPool: EffectWorkerPool;
+    private maxInFlight: number;
+    private inFlight = 0;
+    private presentationHead: PresentationNode = null;
+    private presentationTail: PresentationNode = null;
+    private presenterPromise: Promise<void> | null = null;
+    private capacityWaiters: Array<() => void> = [];
     private _resizeHeight: number | null = null;
     private _resizeFilter = ResizeFilter.Bilinear;
     private _effectEnabled = true;
@@ -86,7 +95,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.audioContext = audioContext;
         this.gainNode = gainNode;
         this.currentFrame = currentFrame;
-        this.ntscEffect = new Queuetex(new NtscEffectBuf());
+        this.maxInFlight = navigator.hardwareConcurrency ?? 1;
+        this.effectPool = new EffectWorkerPool(this.maxInFlight);
     }
 
     static async init(source: Blob) {
@@ -169,7 +179,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     set canvas(canvas: HTMLCanvasElement | null) {
         this._canvas = canvas;
         if (canvas) {
-            this.ctx = canvas.getContext('2d');
+            this.ctx = canvas.getContext('bitmaprenderer', {alpha: false});
             canvas.width = this.videoTrack.codedWidth;
             canvas.height = this.videoTrack.codedHeight;
             void this.queueRender();
@@ -179,9 +189,18 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     async setEffectSettings(settings: Record<string, number | boolean>) {
-        await this.ntscEffect.withValue(effect => {
-            assertEffect(effect).setEffectSettings(SETTINGS_LIST.settingsFromJSON(JSON.stringify(settings)));
-        });
+        const json = JSON.stringify(settings);
+        // Broadcast to all workers; each call returns worker to the pool when done.
+        const updates: Promise<unknown>[] = [];
+        for (let i = 0; i < this.maxInFlight; i++) {
+            updates.push(this.effectPool.getNextWorker().then(run => {
+                return run(worker => {
+                    worker.sendAndForget('update-settings', json);
+                    return Promise.resolve();
+                });
+            }));
+        }
+        await Promise.all(updates);
         void this.queueRender();
     }
 
@@ -311,39 +330,44 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
 
         const videoSampleIterator = this.videoSink.samples(this.playbackStartTimeMedia);
         const runVideoIterator = async() => {
-            while (true) {
-                const nextFrame = (await videoSampleIterator.next()).value;
-                if (!nextFrame) {
-                    this.stopPlaying();
-                    if (this.playbackStartTimeMedia < this._duration) {
-                        this.playbackStartTimeMedia = this._duration;
-                        this.dispatchEvent(new FrameEvent(this._duration));
-                    }
+            for await (const nextFrame of videoSampleIterator) {
+                if (generation !== this.generation) {
+                    nextFrame.close();
                     break;
                 }
 
-                if (nextFrame.timestamp <= this.getPlaybackTime()) {
+                // Backpressure: wait until there is room to submit more work.
+                while (this.inFlight >= this.maxInFlight && generation === this.generation) {
+                    await this.waitForCapacity(generation);
+                }
+
+                if (generation !== this.generation) {
                     nextFrame.close();
-                    continue;
+                    break;
                 }
 
-                while (nextFrame.timestamp > this.getPlaybackTime()) {
-                    await new Promise(resolve => {
-                        requestAnimationFrame(resolve);
-                    });
-                    if (this.generation !== generation) {
-                        nextFrame.close();
-                        return;
-                    }
-                }
+                const framePromise = this.processFrame(nextFrame, generation);
+                this.enqueueForPresentation(framePromise, nextFrame.timestamp, nextFrame.duration ?? (1 / this.frameRate));
+                this.inFlight++;
+                this.ensurePresenter(generation);
+            }
 
-                if (this.generation !== generation) {
-                    nextFrame.close();
-                    return;
+            // Drain any remaining frames in flight.
+            while (this.inFlight > 0 && generation === this.generation) {
+                this.ensurePresenter(generation);
+                if (this.presenterPromise) {
+                    await this.presenterPromise;
+                } else {
+                    break;
                 }
+            }
 
-                this.setCurrentFrame(nextFrame);
-                await this.render();
+            if (generation === this.generation) {
+                this.stopPlaying();
+                if (this.playbackStartTimeMedia < this._duration) {
+                    this.playbackStartTimeMedia = this._duration;
+                    this.dispatchEvent(new FrameEvent(this._duration));
+                }
             }
         };
         void runVideoIterator();
@@ -363,6 +387,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             node.stop();
         }
         this.queuedAudioNodes.clear();
+        this.clearPresentationQueue();
         this.generation++;
 
         this.dispatchEvent(new StateChangeEvent('paused'));
@@ -378,8 +403,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     private queueRender() {
         if (!this.queuedRender) {
             this.queuedRender = new Promise((resolve, reject) => {
-                queueMicrotask(() => {
-                    this.render().then(resolve, reject);
+                requestAnimationFrame(() => {
+                    this.renderCurrentFrame().then(resolve, reject);
                 });
             });
         }
@@ -387,72 +412,14 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         return this.queuedRender;
     }
 
-    private async render() {
+    private async renderCurrentFrame() {
         this.queuedRender = null;
-        if (!this.currentFrame || !this._canvas || !this.ctx) {
-            return;
-        }
+        if (!this.currentFrame || !this._canvas || !this.ctx) return;
 
-        const currentFrame = this.currentFrame;
-        const canvas = this._canvas;
-        const ctx = this.ctx;
-        await this.ntscEffect.withValue(async maybeEffect => {
-            const effect = assertEffect(maybeEffect);
-            effect.setInputSize(currentFrame.codedWidth, currentFrame.codedHeight);
-            let outputWidth, outputHeight;
-            if (this._resizeHeight) {
-                const resizedWidth = Math.round(
-                    currentFrame.codedWidth * this._resizeHeight /  currentFrame.codedHeight);
-                outputWidth = resizedWidth;
-                outputHeight = this._resizeHeight;
-            } else {
-                outputWidth = currentFrame.codedWidth;
-                outputHeight = currentFrame.codedHeight;
-            }
-            effect.setResizeFilter(this._resizeFilter);
-            effect.setOutputSize(outputWidth, outputHeight);
-            effect.setEffectEnabled(this._effectEnabled);
-            const sourceFrameWasm = effect.srcPtr();
-            // For some stupid reason, this method is async! Why is a simple colorspace conversion async? The committee
-            // says so, so it must be! Sync bad, async good! Race conditions are muuuuuch better than two frames of
-            // jank! Async good, jank bad! Never mind that the WebAssembly memory might be invalidated by the time we're
-            // *finished copying into it* by some other WASM method being called, and the only way to work around this
-            // is to disallow *any* other WASM calls while we're busy doing a glorified memcpy asynchronously, or
-            // introduce *another* intermediate array copy that the web committees all seem to pretend are completely
-            // free. The best part, get this, drawing to a canvas is completely synchronous! Oh, that means we *could*
-            // use `getImageData` to do things entirely synchronously, but that results in another intermediate copy and
-            // Firefox now RANDOMIZES the pixel data for security-theater reasons. I greatly look forward to debugging a
-            // bajillion different race conditions because the committees who design these APIs never have to actually
-            // use them.
-            await currentFrame.copyTo(sourceFrameWasm, {format: 'RGBX'});
-            if (
-                currentFrame !== this.currentFrame ||
-                !canvas ||
-                !ctx ||
-                this._canvas !== canvas
-            ) return;
-            const frameNum = this.frameRate * currentFrame.timestamp;
-            console.time('applyEffect');
-            effect.applyEffect(frameNum);
-            console.timeEnd('applyEffect');
-            const dstFrameWasm = effect.dstPtr();
-            const dstFrameClamped = new Uint8ClampedArray(
-                dstFrameWasm.buffer as ArrayBuffer,
-                dstFrameWasm.byteOffset,
-                dstFrameWasm.byteLength,
-            );
-            const imageData = new ImageData(dstFrameClamped, outputWidth, outputHeight);
-
-            if (
-                canvas.width !== outputWidth ||
-                canvas.height !== outputHeight
-            ) {
-                canvas.width = outputWidth;
-                canvas.height = outputHeight;
-            }
-
-            ctx.putImageData(imageData, 0, 0);
-        });
+        const frame = this.currentFrame;
+        const imageData = await this.processFrame(frame.clone(), this.generation);
+        if (!imageData) return;
+        this.presentImage(imageData, frame.timestamp);
     }
 
     private setCurrentFrame(currentFrame: VideoSample | null) {
@@ -463,14 +430,113 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
     }
 
+    private enqueueForPresentation(promise: Promise<ImageBitmap | null>, timestamp: number, duration: number) {
+        const node = {promise, timestamp, duration, next: null as PresentationNode};
+        if (this.presentationTail) {
+            this.presentationTail.next = node;
+            this.presentationTail = node;
+        } else {
+            this.presentationHead = this.presentationTail = node;
+        }
+    }
+
+    private ensurePresenter(generation: number) {
+        if (!this.presentationHead) return;
+        if (!this.presenterPromise) {
+            this.presenterPromise = this.presentLoop(generation).finally(() => {
+                this.presenterPromise = null;
+            });
+        }
+    }
+
+    private waitForCapacity(generation: number) {
+        if (this.inFlight < this.maxInFlight || generation !== this.generation) {
+            return Promise.resolve();
+        }
+        return new Promise<void>(resolve => {
+            this.capacityWaiters.push(resolve);
+        });
+    }
+
+    private async presentLoop(generation: number) {
+        while (this.presentationHead && generation === this.generation) {
+            const node = this.presentationHead;
+            this.presentationHead = node.next;
+            if (!this.presentationHead) this.presentationTail = null;
+
+            const imageData = await node.promise;
+            this.inFlight--;
+            this.releaseCapacityWaiter();
+
+            if (generation !== this.generation) continue;
+            if (!imageData) continue;
+
+            // Pacing: wait until this frame's timestamp matches the playback clock.
+            while (node.timestamp > this.getPlaybackTime() && generation === this.generation) {
+                await new Promise(resolve => requestAnimationFrame(resolve));
+            }
+            if (generation !== this.generation) continue;
+
+            this.presentImage(imageData, node.timestamp);
+        }
+    }
+
+    private clearPresentationQueue() {
+        this.presentationHead = null;
+        this.presentationTail = null;
+        this.inFlight = 0;
+        this.presenterPromise = null;
+        while (this.capacityWaiters.length > 0) {
+            const waiter = this.capacityWaiters.pop();
+            waiter?.();
+        }
+    }
+
+    private releaseCapacityWaiter() {
+        if (this.inFlight < this.maxInFlight && this.capacityWaiters.length > 0) {
+            const waiter = this.capacityWaiters.shift();
+            waiter?.();
+        }
+    }
+
+    private async processFrame(frame: VideoSample, generation: number): Promise<ImageBitmap | null> {
+        let videoFrame: VideoFrame | null = null;
+        try {
+            const frameNum = this.frameRate * frame.timestamp;
+            videoFrame = frame.toVideoFrame();
+            frame.close();
+            const runner = await this.effectPool.getNextWorker<ImageBitmap | null>();
+            const payload: RenderFrame = {
+                frame: videoFrame,
+                resizeHeight: this._resizeHeight,
+                resizeFilter: this._resizeFilter,
+                effectEnabled: this._effectEnabled,
+                frameNum,
+            };
+            return await runner(worker => worker.send('render-frame', payload, [videoFrame!]));
+        } catch {
+            return null;
+        } finally {
+            videoFrame?.close();
+        }
+    }
+
+    private presentImage(imageData: ImageBitmap, timestamp: number) {
+        if (!this._canvas || !this.ctx) return;
+        const canvas = this._canvas;
+        const ctx = this.ctx;
+        if (canvas.width !== imageData.width || canvas.height !== imageData.height) {
+            canvas.width = imageData.width;
+            canvas.height = imageData.height;
+        }
+        //ctx.putImageData(imageData, 0, 0);
+        ctx.transferFromImageBitmap(imageData);
+        this.dispatchEvent(new FrameEvent(timestamp));
+    }
+
     destroy() {
         this.input.dispose();
         this.setCurrentFrame(null);
-        void this.ntscEffect.withValue(effect => {
-            if (effect) {
-                effect.free();
-                effect = null;
-            }
-        });
+        this.effectPool.destroy();
     }
 }

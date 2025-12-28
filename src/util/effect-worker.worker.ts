@@ -23,7 +23,7 @@ export type WorkerSchema =
         };
         response: {
             name: 'rendered-frame';
-            message: ImageData;
+            message: ImageBitmap;
         };
     }
     | {
@@ -49,11 +49,11 @@ const listener = async(event: MessageEvent) => {
         switch (message.type) {
             case 'render-frame': {
                 const data = await renderFrame(message.message);
-                postMessageFromWorker({
+                postMessageFromWorker<WorkerSchema>({
                     type: 'rendered-frame',
                     message: data,
                     originId: message.id,
-                }, [data.data.buffer]);
+                }, [data]);
                 break;
             }
             case 'update-settings': {
@@ -110,16 +110,16 @@ const renderFrame = async({frame, resizeHeight, resizeFilter, effectEnabled, fra
         // bajillion different race conditions because the committees who design these APIs never have to actually
         // use them.
         await frame.copyTo(sourceFrameWasm, {format: 'RGBX'});
-        //console.time('applyEffect');
+        console.time('applyEffect');
         effect.applyEffect(frameNum);
-        //console.timeEnd('applyEffect');
+        console.timeEnd('applyEffect');
         const dstFrameWasm = effect.dstPtr();
         const dstFrameClamped = new Uint8ClampedArray(
             dstFrameWasm.buffer as ArrayBuffer,
             dstFrameWasm.byteOffset,
             dstFrameWasm.byteLength,
         );
-        return new ImageData(dstFrameClamped, outputWidth, outputHeight);
+        return await createImageBitmap(new ImageData(dstFrameClamped, outputWidth, outputHeight));
     });
 };
 
