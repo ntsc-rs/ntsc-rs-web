@@ -1,0 +1,38 @@
+:root {
+    font-family: sans-serif;
+
+    color: #222;
+    background-color: #ffffff;
+}
+
+body {
+    margin: 0;
+    display: flex;
+    min-height: 100vh;
+}
+
+body.loading {
+    align-items: center;
+    justify-content: center;
+}
+
+#loader {
+    width: 4rem;
+    height: 4rem;
+
+    border-radius: 100%;
+    border: 4px solid transparent;
+    border-top-color: #222;
+
+    animation: 1s infinite normal linear spin;
+}
+
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}

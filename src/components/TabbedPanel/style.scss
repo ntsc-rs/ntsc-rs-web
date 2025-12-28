@@ -1,0 +1,38 @@
+@use '../../theme.scss';
+
+.tabbed-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    resize: horizontal;
+    flex: 0 0 auto;
+}
+
+.tabs {
+    display: flex;
+    gap: 0.5rem;
+    background-color: theme.$base-color-tertiary;
+    padding: 0.5rem;
+}
+
+.tab {
+    @include theme.bg-fade;
+    padding: 0.5rem;
+    background-color: theme.$base-color-secondary;
+    border-radius: theme.$radius;
+    cursor: pointer;
+
+    &:hover {
+        background-color: theme.$primary-hover;
+    }
+
+    &.active-tab {
+        background-color: theme.$primary;
+    }
+}
+
+.panel {
+    flex: 1 1 0;
+    display: flex;
+    overflow: auto;
+}

@@ -1,0 +1,154 @@
+@use '../../css/theme.scss' as theme;
+
+.icon {
+    width: 24px;
+    height: 24px;
+    background-color: currentColor;
+    display: inline-block;
+    mask-size: cover;
+
+    &.motif-monochrome {
+        color: theme.$interactive-normal;
+    }
+
+    &.motif-primary {
+        background-color: theme.$primary-lighter;
+    }
+
+    &.motif-success {
+        background-color: theme.$green;
+    }
+
+    &.motif-warning {
+        background-color: theme.$yellow;
+    }
+
+    &.motif-error {
+        background-color: theme.$red;
+    }
+
+    &.icon-clickable {
+        @include theme.fade(opacity);
+        &:hover {
+            opacity: 0.875;
+        }
+
+        &:active {
+            opacity: 0.75;
+        }
+
+        &.icon-disabled {
+            opacity: 0.5;
+        }
+    }
+}
+
+@mixin button-color($hover, $active, $disabled) {
+    &:hover {
+        color: $hover;
+    }
+
+    &:active {
+        color: $active;
+    }
+
+    &.icon-disabled {
+        color: $disabled;
+    }
+}
+
+:root {
+    --icon-button-color: #{theme.$interactive-normal};
+}
+
+.icon-button {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    color: var(--icon-button-color);
+    @include theme.fade(color, opacity);
+
+    @include button-color(theme.$interactive-hover, theme.$interactive-active, theme.$interactive-muted);
+
+    &.motif-monochrome {
+        @include button-color(currentColor, currentColor, currentColor);
+
+        &:hover {
+            opacity: 0.875;
+        }
+
+        &:active {
+            opacity: 0.75;
+        }
+
+        &.icon-disabled {
+            opacity: 0.5;
+        }
+    }
+
+    &:focus-visible {
+        outline: 2px solid theme.$text;
+        border-radius: theme.$radius;
+    }
+
+    &.icon-disabled {
+        cursor: not-allowed;
+    }
+
+    & .icon {
+        pointer-events: none;
+    }
+}
+
+@mixin def-icons($names) {
+    @each $name in $names {
+        .icon-#{$name} {
+            mask-image: url('../../assets/icons/#{$name}.svg');
+        }
+    }
+}
+
+.icon-arrow-right {
+    transform: rotate(-90deg);
+}
+
+.icon-arrow-up {
+    transform: rotate(180deg);
+}
+
+.icon-arrow-left {
+    transform: rotate(90deg);
+}
+
+.icon-arrow-right, .icon-arrow-down, .icon-arrow-up, .icon-arrow-left {
+    mask-image: url('../../assets/icons/arrow-down.svg');
+    @include theme.fade(transform);
+}
+
+@include def-icons(
+    arrow-down
+    check
+    close
+    copy
+    download
+    effect
+    error
+    funnel
+    gear
+    github
+    globe
+    link
+    paste
+    pause
+    play
+    pin
+    plus
+    range
+    reset
+    search
+    speaker
+    speaker-mute
+    stack
+    upload
+    warning
+)

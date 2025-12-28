@@ -1,0 +1,32 @@
+@use '../../css/theme.scss';
+
+.app {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+}
+
+.settings-sidebar {
+    flex: 0 0 40rem;
+    background-color: theme.$base-color-secondary;
+    overflow: auto;
+    display: flex;
+}
+
+.display-pane {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+.preview {
+    flex: 1 1 auto;
+    display: flex;
+}
+
+.file-uploader {
+    background-color: theme.$base-color-secondary-dark;
+    padding: theme.$pane-padding;
+}

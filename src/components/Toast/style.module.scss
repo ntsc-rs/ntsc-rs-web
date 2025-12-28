@@ -1,0 +1,131 @@
+@use '../../css/theme.scss' as theme;
+
+.toast-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    pointer-events: none;
+    overflow-y: auto;
+    max-height: 100%;
+
+    & > * {
+        pointer-events: auto;
+    }
+}
+
+.toast-wrapper {
+    padding-top: 0.5rem;
+    max-width: 50vw;
+}
+
+@keyframes pop-in {
+    from {
+        transform: scale(0);
+        animation-timing-function: ease-out;
+    }
+
+    50% {
+        transform: scale(105%);
+        animation-timing-function: ease;
+    }
+
+    to {
+        transform: scale(100%);
+    }
+}
+
+.toast {
+    background-color: theme.$base-color-primary;
+    border: 1px solid theme.$interactive-normal;
+    border-radius: theme.$radius;
+
+    display: flex;
+    flex-direction: column;
+    overflow-wrap: break-word;
+
+    animation: pop-in 0.25s;
+
+    &.success {
+        background-color: theme.$green;
+        border: none;
+        --icon-button-color: currentColor;
+    }
+
+    &.warning {
+        background-color: theme.$yellow;
+        border: none;
+        color: theme.$base-color-tertiary;
+        --icon-button-color: currentColor;
+    }
+
+    &.error {
+        background-color: theme.$red;
+        border: none;
+        --icon-button-color: currentColor;
+    }
+}
+
+.toast-row {
+    padding: 0.5rem;
+    padding-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toast-icon {
+    flex: 0 0 auto;
+}
+
+.toast-contents {
+    flex: 0 1 auto;
+    overflow: auto;
+
+    &.separate-contents {
+        padding: 0 0.5rem 0.75rem 0.5rem;
+    }
+}
+
+.toast-title {
+    flex: 1 1 auto;
+
+    &.plain {
+        font-weight: bold;
+    }
+}
+
+.timeout-bar {
+    background-color: currentColor;
+    height: 0.25rem;
+    animation-name: timeout;
+    animation-timing-function: linear;
+}
+
+@keyframes timeout {
+    from {
+        width: 100%;
+    }
+
+    to {
+        width: 0;
+    }
+}
+
+.toast-placeholder {
+    visibility: hidden;
+    transition: min-height 0.175s ease-out;
+}
+
+.error-message {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+.error-stack {
+    white-space: pre-wrap;
+    font-family: monospace;
+}

@@ -1,0 +1,91 @@
+@use './theme.scss';
+
+$font: Inter, sans-serif;
+
+html, body {
+    width: 100%;
+    height: 100%;
+}
+
+body {
+    margin: 0;
+    background-color: theme.$base-color-primary;
+    color: theme.$text;
+    scrollbar-color: theme.$base-color-tertiary theme.$base-color-primary;
+
+    & ::-webkit-scrollbar {
+        background-color: theme.$base-color-primary;
+    }
+
+    & ::-webkit-scrollbar-thumb {
+        background-color: theme.$base-color-tertiary;
+    }
+}
+
+::selection {
+    background-color: theme.$primary;
+    color: white;
+}
+
+body, button, input, select {
+    font-family: $font;
+    font-feature-settings: 'ss07', 'ss08', 'cv10';
+}
+
+@mixin tabular-nums {
+    font-feature-settings: 'ss07', 'ss08', 'cv10', 'tnum';
+}
+
+.tabular-nums {
+    @include tabular-nums();
+}
+
+$textbox-padding-x: 0.675rem;
+$textbox-padding-y: 0.5rem;
+
+
+@mixin textbox {
+    background-color: theme.$base-color-tertiary;
+    outline: 1px solid theme.$interactive-normal;
+    border: none;
+    border-radius: 4px;
+    color: theme.$text;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: $textbox-padding-y $textbox-padding-x;
+    box-sizing: content-box;
+
+    &:focus-within {
+        outline: 2px solid theme.$interactive-active;
+    }
+
+    &:disabled, &.disabled {
+        cursor: not-allowed;
+        color: theme.$interactive-muted;
+        outline-color: theme.$interactive-muted;
+    }
+}
+
+input[type=text], input[type=password], textarea, select {
+    @include textbox();
+}
+
+input[type=checkbox] {
+    accent-color: theme.$interactive-active;
+}
+
+textarea {
+    resize: none;
+    margin: 0;
+    font-family: $font;
+}
+
+a {
+    text-decoration: none;
+    color: theme.$primary-lighter;
+
+    &:hover {
+        cursor: pointer;
+        text-decoration: underline;
+    }
+}

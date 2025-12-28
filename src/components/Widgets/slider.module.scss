@@ -1,0 +1,81 @@
+// Adapted from css-tricks:
+// https://css-tricks.com/sliding-nightmare-understanding-range-input/
+
+@use '../../css/theme.scss' as theme;
+
+$track-w: 12.5em;
+$track-h: 8px;
+$thumb-d: 16px;
+
+@mixin track($fill: 0) {
+    box-sizing: border-box;
+    border: none;
+    height: $track-h;
+    background: var(--track-c);
+    border-radius: $track-h;
+
+    @if $fill == 1 {
+        & {
+            background: linear-gradient(var(--fill-c), var(--fill-c))
+                0/ var(--sx) 100% no-repeat var(--track-c)
+        }
+    }
+}
+
+@mixin fill() {
+    height: $track-h;
+    background: var(--fill-c);
+    border-radius: $track-h;
+}
+
+@mixin thumb() {
+    box-sizing: border-box;
+    border: 2px solid var(--fill-c);
+    width: $thumb-d; height: $thumb-d;
+    border-radius: 50%;
+    background: var(--thumb-c);
+}
+
+.slider[type='range'] {
+    --range: calc(var(--max) - var(--min));
+    --ratio: calc((var(--val) - var(--min))/var(--range));
+    --sx: calc(.5*#{$thumb-d} + var(--ratio)*(100% - #{$thumb-d}));
+
+    --track-c: #{theme.$interactive-muted};
+    --fill-c: #{theme.$interactive-active};
+    --thumb-c: #{theme.$base-color-tertiary};
+
+    &:disabled {
+        --fill-c: #{theme.$interactive-muted};
+    }
+
+    margin: 0;
+    padding: 0;
+    width: $track-w; height: $thumb-d;
+    background: transparent;
+
+    &::-webkit-slider-runnable-track {
+        @include track(1)
+    }
+    &::-moz-range-track { @include track }
+    &::-ms-track { @include track }
+
+    &::-moz-range-progress { @include fill }
+    &::-ms-fill-lower { @include fill }
+
+    &::-webkit-slider-thumb {
+        margin-top: .5*($track-h - $thumb-d);
+        @include thumb
+    }
+    &::-moz-range-thumb { @include thumb }
+    &::-ms-thumb {
+        margin-top: 0;
+        @include thumb
+    }
+
+    &::-ms-tooltip { display: none }
+
+    &, &::-webkit-slider-thumb {
+        -webkit-appearance: none;
+    }
+}

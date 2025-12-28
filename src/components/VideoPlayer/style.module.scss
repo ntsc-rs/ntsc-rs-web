@@ -1,0 +1,128 @@
+@use '../../css/theme.scss' as theme;
+
+@keyframes move-stripes {
+    0% {
+        background-position: -31.11px 0;
+    }
+    100% {
+        background-position: 0 -31.11px;
+    }
+}
+
+.player-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    overflow: auto;
+}
+
+.video-scrubber {
+    display: flex;
+    gap: 0.5rem;
+    font-weight: 600;
+    padding: 0.5rem;
+}
+
+.scrubber-slider {
+    flex: 1 1 0;
+}
+
+.video-info-bar {
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid theme.$divider;
+    background-color: theme.$base-color-primary;
+}
+
+.video-info {
+    display: flex;
+    align-self: stretch;
+}
+
+.video-resolution, .video-framerate {
+    border-right: 1px solid theme.$divider;
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+}
+
+.video-file-name {
+    flex: 1 1 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: pre;
+    padding-left: 0.5rem;
+}
+
+.player-controls {
+    display: flex;
+    border-top: 1px solid theme.$divider;
+    background-color: theme.$base-color-primary;
+    flex: 0 0 auto;
+
+    & > * {
+        border-right: 1px solid theme.$divider;
+
+        &:last-child {
+            border-right: none;
+        }
+    }
+}
+
+.time-controls, .zoom-controls, .volume-controls, .effect-enabled {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.player-video-pane, .media-drop-zone, .loading-state, .error {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+}
+
+.media-drop-zone {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    flex-direction: column;
+    position: relative;
+
+    cursor: pointer;
+
+    &.dragging::after {
+        content: "";
+        display: block;
+        position: absolute;
+        left: 1em;
+        right: 1em;
+        top: 1em;
+        bottom: 1em;
+
+        border: 4px solid transparent;
+        --border-color: #{theme.$divider};
+        background: repeating-linear-gradient(45deg, var(--border-color), var(--border-color) 10px, transparent 11px, transparent 21px, var(--border-color) 22px) border-box;
+        background-size: calc(100% + 64px) calc(100% + 64px);
+        mask:
+            linear-gradient(#000 0 0) padding-box,
+            linear-gradient(#000 0 0);
+        mask-composite: exclude;
+        border-radius: 1rem;
+        animation: move-stripes 1s linear infinite;
+    }
+}
+
+.loading-state {
+    font-size: 200%;
+    color: theme.$text-detail;
+}
+
+.error header, .media-drop-zone header {
+    font-size: 200%;
+    margin-bottom: 1rem;
+}

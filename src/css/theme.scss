@@ -1,0 +1,97 @@
+:root {
+    --base-color-primary: #161518;
+    --base-color-secondary: #101113;
+    --base-color-secondary-dark: #0d0e0f;
+    --base-color-tertiary: #050607;
+
+    --text: #f8f1e6;
+    --text-detail: #b8b4ac;
+    --icon: #f8f1e6;
+    --icon-detail: #b8b4ac;
+
+    --link: #8de1e7;
+    --link-underline: #8de1e77f;
+
+    --toggle-hover: #f8f1e62a;
+    --toggle-active: #f8f1e649;
+
+    --interactive-normal: #9b9996;
+    --interactive-hover: #dbdad7;
+    --interactive-active: #e7e5de;
+    --interactive-muted: #5f5d59;
+    --divider: #373344;
+
+    --primary: #503f76;
+    --primary-hover: #3c3267;
+    --primary-active: #2b2652;
+    --primary-muted: #3f3d4d;
+    --primary-light: #71559b;
+    --primary-lighter: #916db8;
+
+    --red: rgb(206, 40, 53);
+    --red-hover: rgb(153, 37, 72);
+    --red-active: rgb(119, 29, 64);
+    --red-muted: rgb(131, 50, 63);
+
+    --yellow: rgb(238, 179, 49);
+    --yellow-hover: rgb(201, 135, 59);
+    --yellow-active: rgb(190, 109, 42);
+    --yellow-muted: rgb(172, 124, 61);
+
+    --green: rgb(16, 174, 106);
+    --green-hover:rgb(32, 138, 120);
+    --green-active:rgb(33, 114, 114);
+    --green-muted: rgb(67, 141, 122);
+
+    --pane-padding: 1rem;
+    --corner-radius: 0.25rem;
+}
+
+$base-color-primary: var(--base-color-primary);
+$base-color-secondary: var(--base-color-secondary);
+$base-color-secondary-dark: var(--base-color-secondary-dark);
+$base-color-tertiary: var(--base-color-tertiary);
+$text: var(--text);
+$text-detail: var(--text-detail);
+$icon: var(--icon);
+$icon-detail: var(--icon-detail);
+$link: var(--link);
+$link-underline: var(--link-underline);
+$toggle-hover: var(--toggle-hover);
+$toggle-active: var(--toggle-active);
+$interactive-normal: var(--interactive-normal);
+$interactive-hover: var(--interactive-hover);
+$interactive-active: var(--interactive-active);
+$interactive-muted: var(--interactive-muted);
+$divider: var(--divider);
+$primary: var(--primary);
+$primary-hover: var(--primary-hover);
+$primary-active: var(--primary-active);
+$primary-muted: var(--primary-muted);
+$primary-light: var(--primary-light);
+$primary-lighter: var(--primary-lighter);
+$red: var(--red);
+$red-hover: var(--red-hover);
+$red-active: var(--red-active);
+$red-muted: var(--red-muted);
+$yellow: var(--yellow);
+$yellow-hover: var(--yellow-hover);
+$yellow-active: var(--yellow-active);
+$yellow-muted: var(--yellow-muted);
+$green: var(--green);
+$green-hover: var(--green-hover);
+$green-active: var(--green-active);
+$green-muted: var(--green-muted);
+
+$pane-padding: var(--pane-padding);
+$radius: var(--corner-radius);
+
+@mixin bg-fade {
+    transition: background-color 0.25s ease;
+}
+
+@mixin fade($props...) {
+    transition-property: $props;
+    transition-duration: 0.175s;
+    transition-timing-function: ease;
+}

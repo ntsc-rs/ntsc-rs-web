@@ -1,0 +1,143 @@
+@use '../../css/theme.scss';
+
+.settings-pane {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    flex: 1 1 0;
+}
+
+.settings-list {
+    padding: theme.$pane-padding;
+    overflow: auto;
+    scrollbar-gutter: stable;
+}
+
+.settings-list, .group-box-children {
+    display: grid;
+    grid-template-columns: 1fr 18ch;
+    gap: 1rem;
+    align-items: center;
+
+    &.disabled {
+        color: theme.$text-detail;
+    }
+}
+
+.setting {
+    display: contents;
+
+    // Groups and checkboxes span both columns
+    &:has(.group-box),
+    &:has(.checkbox:not(.group-checkbox)) {
+        > * {
+            grid-column: 1 / -1;
+        }
+    }
+}
+
+.slider-with-spinbox {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    & > :first-child {
+        flex: 1 1 auto;
+    }
+}
+
+.group-box {
+    //border: 1px solid theme.$interactive-muted;
+    border-radius: theme.$radius;
+    border-top-color: transparent;
+    position: relative;
+}
+
+.group-box-top-edge {
+    display: flex;
+    align-items: center;
+    height: 1rem;
+    box-sizing: border-box;
+}
+
+.group-box-border-left, .group-box-border-right {
+    border: 1px solid theme.$divider;
+    border-bottom-color: transparent;
+    border-left-color: transparent;
+    border-right-color: transparent;
+    border-radius: theme.$radius;
+    height: 0.5rem;
+    box-sizing: border-box;
+    align-self: flex-end;
+}
+
+.group-box-border-left {
+    width: 1rem;
+    border-top-right-radius: 0;
+}
+
+.group-box-border-right {
+    flex: 1 1 auto;
+    border-top-left-radius: 0;
+}
+
+.group-box-border-rest {
+    position: absolute;
+    top: calc(1rem / 2);
+    left: 0;
+    bottom: 0;
+    right: 0;
+    border: 1px solid theme.$divider;
+    border-radius: theme.$radius;
+    border-top-color: transparent;
+    pointer-events: none;
+}
+
+.group-checkbox {
+    margin: 0 0.5rem;
+}
+
+.group-box-children {
+    padding: 0.5rem 0.75rem 0.75rem;
+}
+
+.checkboxInput {
+    margin: 0;
+}
+
+.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.resize-setting {
+    display: flex;
+    align-items: center;
+    gap: 1ch;
+    grid-column: 1 / 3;
+
+    padding-bottom: 1rem;
+    border-bottom: 1px solid theme.$divider;
+}
+
+.resize-dropdown {
+    flex: 1 1 0;
+}
+
+.presets-row {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-top: 1px solid theme.$divider;
+}
+
+.presets-label {
+    font-weight: 600;
+}
+
+.presets-buttons {
+    display: flex;
+    align-items: center;
+}

@@ -1,0 +1,294 @@
+@use '../../css/theme.scss' as theme;
+@use '../../css/global.scss' as global;
+@use '../../css/buttons.scss' as buttons;
+
+.select-wrapper {
+    position: relative;
+    --arrow-color: #{theme.$interactive-normal};
+
+    &.disabled {
+        --arrow-color: #{theme.$interactive-muted};
+    }
+
+    &::after {
+        width: 24px;
+        height: 24px;
+        display: inline-block;
+        background-color: var(--arrow-color);
+        mask: url('../../assets/icons/select-arrow.svg');
+
+        position: absolute;
+        top: calc(50% - 12px);
+        right: 0.325rem;
+
+        content: '';
+        pointer-events: none;
+    }
+}
+
+.select {
+    appearance: none;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.spinbox-wrapper {
+    @include global.textbox();
+    padding: 0;
+    display: flex;
+    overflow: hidden;
+    --border-color: #{theme.$interactive-normal};
+
+    &.disabled {
+        --border-color: #{theme.$interactive-muted};
+    }
+}
+
+.spinbox-display, input[type=number].spinbox-field {
+    width: 3.5rem;
+    padding: global.$textbox-padding-y 0 global.$textbox-padding-y global.$textbox-padding-x;
+    background: none;
+    border: none;
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    outline: none;
+}
+
+.spinbox-display {
+    cursor: ns-resize;
+}
+
+input[type=number].spinbox-field {
+    appearance: textfield;
+
+    &::-webkit-outer-spin-button, &::-webkit-inner-spin-button {
+        display: none;
+    }
+}
+
+.spinbox-buttons {
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid var(--border-color);
+}
+
+.spinbox-button {
+    width: 1rem;
+    flex: 1 1 auto;
+    cursor: pointer;
+    background-color: theme.$base-color-secondary-dark;
+
+    &:hover {
+        background-color: theme.$base-color-secondary;
+    }
+
+    &:active {
+        background-color: theme.$base-color-tertiary;
+    }
+    user-select: none;
+
+    @include theme.bg-fade();
+}
+
+.spinbox-button-divider {
+    height: 1px;
+    background-color: var(--border-color);
+}
+
+.spinbox-up, .spinbox-down {
+    background-color: var(--border-color);
+    width: 100%;
+    height: 100%;
+    mask-position: center;
+    mask-repeat: no-repeat;
+    mask-size: contain;
+}
+
+.spinbox-up {
+    mask-image: url('../../assets/icons/spinbox-arrow-up.svg');
+}
+
+.spinbox-down {
+    mask-image: url('../../assets/icons/spinbox-arrow-down.svg');
+}
+
+.icon-button {
+    padding: 0.25rem;
+    cursor: pointer;
+    display: flex;
+    border-radius: theme.$radius;
+
+    &:hover {
+        background-color: theme.$toggle-hover;
+    }
+
+    &:active {
+        background-color: theme.$toggle-active;
+    }
+}
+
+.toggle-icon.toggledOn {
+    background-color: theme.$toggle-active;
+}
+
+.button-contents {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 24px;
+}
+
+.checkbox-toggle {
+    display: inline-flex;
+    align-items: center;
+
+    &.disabled {
+        color: theme.$text-detail;
+    }
+}
+
+.button {
+    flex: 0 0 auto;
+    border: none;
+    border-radius: theme.$radius;
+    color: white;
+    cursor: pointer;
+    font-size: 90%;
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    height: 2.5rem;
+
+    @include buttons.button-color(theme.$primary, theme.$primary-hover, theme.$primary-active, theme.$primary-muted, white);
+
+    &:disabled {
+        cursor: not-allowed;
+    }
+
+    &.green {
+        @include buttons.button-color(theme.$green, theme.$green-hover, theme.$green-active, theme.$green-muted, white);
+    }
+
+    &.yellow {
+        @include buttons.button-color(theme.$yellow, theme.$yellow-hover, theme.$yellow-active, theme.$yellow-muted, white);
+    }
+
+    &.red {
+        @include buttons.button-color(theme.$red, theme.$red-hover, theme.$red-active, theme.$red-muted, white);
+    }
+}
+
+input[type=text].small {
+    font-size: 0.825rem;
+    padding: 0.325rem 0.4rem;
+}
+
+.collapsible-header-title {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.collapsible-header-title-text {
+    margin-left: 0.25rem;
+}
+
+// Searchable Checkbox Dropdown
+.searchable-dropdown-wrapper {
+    position: relative;
+}
+
+.searchable-dropdown-button {
+    @include global.textbox();
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: global.$textbox-padding-y global.$textbox-padding-x;
+    cursor: pointer;
+    text-align: left;
+    box-sizing: border-box;
+
+    &.open {
+        border-color: theme.$primary;
+    }
+}
+
+.searchable-dropdown-button-text {
+    flex: 1;
+    color: theme.$text;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 0.5rem;
+}
+
+.searchable-dropdown-arrow {
+    flex-shrink: 0;
+}
+
+.searchable-dropdown-panel {
+    position: absolute;
+    background: theme.$base-color-secondary;
+    border: 1px solid theme.$divider;
+    border-radius: theme.$radius;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.searchable-dropdown-search {
+    padding: 0.5rem;
+    border-bottom: 1px solid theme.$divider;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+}
+
+.searchable-dropdown-search-input {
+    @include global.textbox();
+    width: 100%;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+    box-sizing: border-box;
+}
+
+.searchable-dropdown-options {
+    overflow-y: auto;
+    font-size: 0.875rem;
+}
+
+.searchable-dropdown-option {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    cursor: pointer;
+    width: 100%;
+    box-sizing: border-box;
+
+    &:hover {
+        background: theme.$toggle-hover;
+    }
+}
+
+.searchable-dropdown-checkbox {
+    margin-right: 0.5rem;
+    cursor: pointer;
+    flex: 0 0 auto;
+}
+
+.searchable-dropdown-option-text {
+    flex: 1;
+    color: theme.$text;
+}
+
+.searchable-dropdown-no-results {
+    padding: 0.75rem;
+    text-align: center;
+    color: theme.$text-detail;
+    font-style: italic;
+}
