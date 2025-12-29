@@ -9,6 +9,12 @@ type QueueNode = {
 const messageMap = {
     'render-frame': 'rendered-frame',
 } as const;
+type Runner<T> = (cb: (worker: RpcDispatcher<WorkerSchema>) => Promise<T>) => Promise<T>;
+
+const taskRegistry = new FinalizationRegistry<null>(() => {
+    // eslint-disable-next-line no-console
+    console.error('A worker pool task was garbage-collected without being run or cancelled.');
+});
 
 export default class EffectWorkerPool {
     private workers: RpcDispatcher<WorkerSchema>[] = [];
@@ -27,13 +33,15 @@ export default class EffectWorkerPool {
             this.workers.push(dispatcher);
             this.allWorkers.push(dispatcher);
         }
+
+        setInterval(() => console.log(this.workers.length), 1000);
     }
 
     /**
      * Wait for a worker to become available, then returns a function you can pass a callback into to run with that
      * worker. After the callback is done, the worker is put back into the pool automatically.
      */
-    getNextWorker<T>(): Promise<(cb: (worker: RpcDispatcher<WorkerSchema>) => Promise<T>) => Promise<T>> {
+    getNextWorker<T>(): Promise<Runner<T>> {
         const p = new Promise((resolve: (worker: RpcDispatcher<WorkerSchema>) => void) => {
             const node = {resolve, next: null};
             if (this.queueTail) {
@@ -43,12 +51,15 @@ export default class EffectWorkerPool {
                 this.queueHead = this.queueTail = node;
             }
         }).then(worker => {
-            return (cb: (worker: RpcDispatcher<WorkerSchema>) => Promise<T>) => {
+            const runner = (cb: (worker: RpcDispatcher<WorkerSchema>) => Promise<T>) => {
                 return cb(worker).finally(() => {
+                    taskRegistry.unregister(runner);
                     this.workers.push(worker);
                     this.doWork();
                 });
             };
+            taskRegistry.register(runner, null, runner);
+            return runner;
         });
 
         this.doWork();

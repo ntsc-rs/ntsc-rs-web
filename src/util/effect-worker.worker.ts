@@ -109,7 +109,7 @@ const renderFrame = async({frame, resizeHeight, resizeFilter, effectEnabled, fra
         // Firefox now RANDOMIZES the pixel data for security-theater reasons. I greatly look forward to debugging a
         // bajillion different race conditions because the committees who design these APIs never have to actually
         // use them.
-        await frame.copyTo(sourceFrameWasm, {format: 'RGBX'});
+        await frame.copyTo(sourceFrameWasm, {format: 'RGBX', colorSpace: 'srgb'});
         console.time('applyEffect');
         effect.applyEffect(frameNum);
         console.timeEnd('applyEffect');

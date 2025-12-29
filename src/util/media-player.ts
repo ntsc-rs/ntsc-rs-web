@@ -11,7 +11,6 @@ import {
 } from 'mediabunny';
 import {TypedEvent, TypedEventTarget} from './typed-events';
 import {ResizeFilter} from 'ntsc-rs-web-wrapper';
-import {SETTINGS_LIST} from '../app-state';
 import EffectWorkerPool from './effect-worker-pool';
 import type {RenderFrame} from './effect-worker.worker';
 
@@ -36,7 +35,7 @@ export class StateChangeEvent extends TypedEvent<'statechange'> {
 }
 
 type PresentationNode = {
-    promise: Promise<ImageBitmap | null>;
+    promise: () => Promise<ImageBitmap | null>;
     timestamp: number;
     duration: number;
     next: PresentationNode;
@@ -63,11 +62,9 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     private ctx: ImageBitmapRenderingContext | null = null;
     private effectPool: EffectWorkerPool;
     private maxInFlight: number;
-    private inFlight = 0;
     private presentationHead: PresentationNode = null;
     private presentationTail: PresentationNode = null;
     private presenterPromise: Promise<void> | null = null;
-    private capacityWaiters: Array<() => void> = [];
     private _resizeHeight: number | null = null;
     private _resizeFilter = ResizeFilter.Bilinear;
     private _effectEnabled = true;
@@ -336,24 +333,21 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
                     break;
                 }
 
-                // Backpressure: wait until there is room to submit more work.
-                while (this.inFlight >= this.maxInFlight && generation === this.generation) {
-                    await this.waitForCapacity(generation);
-                }
-
+                const getFrame = await this.processFrame(nextFrame, generation);
                 if (generation !== this.generation) {
-                    nextFrame.close();
+                    void getFrame();
                     break;
                 }
-
-                const framePromise = this.processFrame(nextFrame, generation);
-                this.enqueueForPresentation(framePromise, nextFrame.timestamp, nextFrame.duration ?? (1 / this.frameRate));
-                this.inFlight++;
+                this.enqueueForPresentation(
+                    getFrame,
+                    nextFrame.timestamp,
+                    nextFrame.duration,
+                );
                 this.ensurePresenter(generation);
             }
 
             // Drain any remaining frames in flight.
-            while (this.inFlight > 0 && generation === this.generation) {
+            while (this.presentationHead && generation === this.generation) {
                 this.ensurePresenter(generation);
                 if (this.presenterPromise) {
                     await this.presenterPromise;
@@ -417,7 +411,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         if (!this.currentFrame || !this._canvas || !this.ctx) return;
 
         const frame = this.currentFrame;
-        const imageData = await this.processFrame(frame.clone(), this.generation);
+        const getFrame = await this.processFrame(frame.clone(), this.generation);
+        const imageData = await getFrame();
         if (!imageData) return;
         this.presentImage(imageData, frame.timestamp);
     }
@@ -430,7 +425,11 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
     }
 
-    private enqueueForPresentation(promise: Promise<ImageBitmap | null>, timestamp: number, duration: number) {
+    private enqueueForPresentation(
+        promise: () => Promise<ImageBitmap | null>,
+        timestamp: number,
+        duration: number,
+    ) {
         const node = {promise, timestamp, duration, next: null as PresentationNode};
         if (this.presentationTail) {
             this.presentationTail.next = node;
@@ -449,24 +448,13 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
     }
 
-    private waitForCapacity(generation: number) {
-        if (this.inFlight < this.maxInFlight || generation !== this.generation) {
-            return Promise.resolve();
-        }
-        return new Promise<void>(resolve => {
-            this.capacityWaiters.push(resolve);
-        });
-    }
-
     private async presentLoop(generation: number) {
         while (this.presentationHead && generation === this.generation) {
             const node = this.presentationHead;
             this.presentationHead = node.next;
-            if (!this.presentationHead) this.presentationTail = null;
+            if (!node.next) this.presentationTail = null;
 
-            const imageData = await node.promise;
-            this.inFlight--;
-            this.releaseCapacityWaiter();
+            const imageData = await node.promise();
 
             if (generation !== this.generation) continue;
             if (!imageData) continue;
@@ -482,43 +470,46 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     private clearPresentationQueue() {
-        this.presentationHead = null;
+        let node;
+        while ((node = this.presentationHead)) {
+            void node.promise();
+            this.presentationHead = node.next;
+        }
         this.presentationTail = null;
-        this.inFlight = 0;
         this.presenterPromise = null;
-        while (this.capacityWaiters.length > 0) {
-            const waiter = this.capacityWaiters.pop();
-            waiter?.();
-        }
     }
 
-    private releaseCapacityWaiter() {
-        if (this.inFlight < this.maxInFlight && this.capacityWaiters.length > 0) {
-            const waiter = this.capacityWaiters.shift();
-            waiter?.();
-        }
-    }
+    private async processFrame(frame: VideoSample, generation: number): Promise<() => Promise<ImageBitmap | null>> {
+        const frameNum = this.frameRate * frame.timestamp;
+        const videoFrame = frame.toVideoFrame();
+        frame.close();
+        const runner = await this.effectPool.getNextWorker<ImageBitmap | null>();
+        const payload: RenderFrame = {
+            frame: videoFrame,
+            resizeHeight: this._resizeHeight,
+            resizeFilter: this._resizeFilter,
+            effectEnabled: this._effectEnabled,
+            frameNum,
+        };
 
-    private async processFrame(frame: VideoSample, generation: number): Promise<ImageBitmap | null> {
-        let videoFrame: VideoFrame | null = null;
-        try {
-            const frameNum = this.frameRate * frame.timestamp;
-            videoFrame = frame.toVideoFrame();
-            frame.close();
-            const runner = await this.effectPool.getNextWorker<ImageBitmap | null>();
-            const payload: RenderFrame = {
-                frame: videoFrame,
-                resizeHeight: this._resizeHeight,
-                resizeFilter: this._resizeFilter,
-                effectEnabled: this._effectEnabled,
-                frameNum,
-            };
-            return await runner(worker => worker.send('render-frame', payload, [videoFrame!]));
-        } catch {
-            return null;
-        } finally {
-            videoFrame?.close();
-        }
+        // This is a two-step process. First, we send the frame to the worker to be processed immediately. However, the
+        // "runner" callback intentionally does not finish until someone calls the function we return to access the
+        // frame. This means that the number of in-flight frames is naturally limited to the number of workers in the
+        // pool.
+        let release: () => void;
+        const waitForRelease = new Promise<void>(resolve => {
+            release = resolve;
+        });
+        const framePromise = runner(async worker => {
+            const renderedFrame = await worker.send('render-frame', payload, [videoFrame]);
+            await waitForRelease;
+            return renderedFrame;
+        });
+
+        return () => {
+            release();
+            return framePromise;
+        };
     }
 
     private presentImage(imageData: ImageBitmap, timestamp: number) {
@@ -529,7 +520,6 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             canvas.width = imageData.width;
             canvas.height = imageData.height;
         }
-        //ctx.putImageData(imageData, 0, 0);
         ctx.transferFromImageBitmap(imageData);
         this.dispatchEvent(new FrameEvent(timestamp));
     }
