@@ -12,7 +12,7 @@ import {
 import {TypedEvent, TypedEventTarget} from './typed-events';
 import {ResizeFilter} from 'ntsc-rs-web-wrapper';
 import EffectWorkerPool from './effect-worker-pool';
-import type {RenderFrame} from './effect-worker.worker';
+import Queue from './queue';
 
 export class FrameEvent extends TypedEvent<'frame'> {
     frameTimestamp: number;
@@ -34,12 +34,89 @@ export class StateChangeEvent extends TypedEvent<'statechange'> {
     }
 }
 
-type PresentationNode = {
-    promise: () => Promise<ImageBitmap | null>;
-    timestamp: number;
-    duration: number;
-    next: PresentationNode;
-} | null;
+class PresentationNode {
+    frame: VideoSample;
+    promise: () => Promise<ImageBitmap>;
+
+    constructor(frame: VideoSample, promise: () => Promise<ImageBitmap>) {
+        this.frame = frame;
+        this.promise  = promise;
+    }
+
+    destroy() {
+        this.frame.close();
+        void this.promise();
+    }
+}
+
+class PresentEvent extends TypedEvent<'present'> {
+    imageBitmap: ImageBitmap;
+    frame: VideoSample;
+
+    constructor(imageBitmap: ImageBitmap, frame: VideoSample) {
+        super('present');
+        this.imageBitmap = imageBitmap;
+        this.frame = frame;
+    }
+}
+
+class DoneEvent extends TypedEvent<'done'> {
+    constructor() {
+        super('done');
+    }
+}
+
+class PresentationLoop extends TypedEventTarget<PresentEvent | DoneEvent> {
+    private atEndOfStream = false;
+    constructor(queue: Queue<PresentationNode>, signal: AbortSignal, getPlaybackTime: () => number) {
+        super();
+
+        void (async() => {
+            outer:
+            while (true) {
+                // TODO: is it safe to do popFront in the loop condition, or could that modify the presentation queue
+                // even if the generation is stale?
+                while (!queue.peekFront()) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    if (signal.aborted || this.atEndOfStream) break outer;
+                }
+
+                const node = queue.popFront()!;
+
+                const imageData = await node.promise();
+                if (signal.aborted) {
+                    node.destroy();
+                    break;
+                }
+
+                // Pacing: wait until this frame's timestamp matches the playback clock.
+                while (node.frame.timestamp > getPlaybackTime()) {
+                    await new Promise(resolve => requestAnimationFrame(resolve));
+                    if (signal.aborted) {
+                        node.destroy();
+                        break outer;
+                    }
+                }
+
+                this.dispatchEvent(new PresentEvent(imageData, node.frame));
+            }
+
+            if (signal.aborted) return;
+            this.dispatchEvent(new DoneEvent());
+        })();
+    }
+
+    eos() {
+        this.atEndOfStream = true;
+    }
+}
+
+export type PipelineSettings = {
+    resizeHeight: number | null;
+    resizeFilter: ResizeFilter;
+    effectEnabled: boolean;
+    effectSettings: Record<string, number | boolean>;
+};
 
 export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChangeEvent> {
     private input: Input;
@@ -53,25 +130,29 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
 
     private playbackStartTimeGlobal: number | null = null;
     private playbackStartTimeMedia = 0;
+    private lastDisplayedFrameTime = 0;
+
     private queuedAudioNodes = new Set<AudioBufferSourceNode>();
     private audioBufferIterator: AsyncGenerator<WrappedAudioBuffer, void, unknown> | null = null;
     private videoSampleIterator: AsyncGenerator<VideoSample, void, unknown> | null = null;
-    private generation = 0;
+
+    private playbackAbortController: AbortController = new AbortController();
+    private videoAbortController: AbortController | null = null;
     private currentFrame: VideoSample | null = null;
-    private _canvas: HTMLCanvasElement | null = null;
-    private ctx: ImageBitmapRenderingContext | null = null;
     private effectPool: EffectWorkerPool;
-    private maxInFlight: number;
-    private presentationHead: PresentationNode = null;
-    private presentationTail: PresentationNode = null;
-    private presenterPromise: Promise<void> | null = null;
-    private _resizeHeight: number | null = null;
-    private _resizeFilter = ResizeFilter.Bilinear;
-    private _effectEnabled = true;
+    private presentationQueue: Queue<PresentationNode> = new Queue();
+    private presentationLoop: PresentationLoop | null = null;
+
     private queuedRender: Promise<void> | null = null;
+    private rerenderPending = false;
     private queuedSeekTime: number | null = null;
 
-    constructor(
+    private _canvas: HTMLCanvasElement | null = null;
+    private ctx: ImageBitmapRenderingContext | null = null;
+
+    private pipelineSettings: PipelineSettings;
+
+    private constructor(
         input: Input,
         videoTrack: InputVideoTrack,
         videoSink: VideoSampleSink,
@@ -81,6 +162,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         audioContext: AudioContext,
         gainNode: GainNode,
         currentFrame: VideoSample | null,
+        effectPool: EffectWorkerPool,
+        settings: PipelineSettings,
     ) {
         super();
         this.input = input;
@@ -92,11 +175,11 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.audioContext = audioContext;
         this.gainNode = gainNode;
         this.currentFrame = currentFrame;
-        this.maxInFlight = navigator.hardwareConcurrency ?? 1;
-        this.effectPool = new EffectWorkerPool(this.maxInFlight);
+        this.effectPool = effectPool;
+        this.pipelineSettings = settings;
     }
 
-    static async init(source: Blob) {
+    static async create(source: Blob, settings: PipelineSettings) {
         const input = new Input({
             source: new BlobSource(source),
             formats: ALL_FORMATS,
@@ -123,6 +206,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         const audioSink = audioTrack ? new AudioBufferSink(audioTrack) : null;
 
         const currentFrame = await videoSink.getSample(0);
+        const effectPool = await EffectWorkerPool.create();
 
         return new MediaPlayer(
             input,
@@ -134,6 +218,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             audioContext,
             gainNode,
             currentFrame,
+            effectPool,
+            settings,
         );
     }
 
@@ -179,53 +265,50 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             this.ctx = canvas.getContext('bitmaprenderer', {alpha: false});
             canvas.width = this.videoTrack.codedWidth;
             canvas.height = this.videoTrack.codedHeight;
-            void this.queueRender();
+            void this.reRender();
         } else {
             this.ctx = null;
         }
     }
 
-    async setEffectSettings(settings: Record<string, number | boolean>) {
-        const json = JSON.stringify(settings);
-        // Broadcast to all workers; each call returns worker to the pool when done.
-        const updates: Promise<unknown>[] = [];
-        for (let i = 0; i < this.maxInFlight; i++) {
-            updates.push(this.effectPool.getNextWorker().then(run => {
-                return run(worker => {
-                    worker.sendAndForget('update-settings', json);
-                    return Promise.resolve();
-                });
-            }));
-        }
-        await Promise.all(updates);
-        void this.queueRender();
+    get effectSettings() {
+        return this.pipelineSettings.effectSettings;
+    }
+
+    set effectSettings(settings: Record<string, number | boolean>) {
+        if (this.pipelineSettings.effectSettings === settings) return;
+        this.pipelineSettings.effectSettings = settings;
+        void this.reRender();
     }
 
     get resizeHeight() {
-        return this._resizeHeight;
+        return this.pipelineSettings.resizeHeight;
     }
 
     set resizeHeight(height: number | null) {
-        this._resizeHeight = height;
-        void this.queueRender();
+        if (this.pipelineSettings.resizeHeight === height) return;
+        this.pipelineSettings.resizeHeight = height;
+        void this.reRender();
     }
 
     get resizeFilter() {
-        return this._resizeFilter;
+        return this.pipelineSettings.resizeFilter;
     }
 
     set resizeFilter(filter: ResizeFilter) {
-        this._resizeFilter = filter;
-        void this.queueRender();
+        if (this.pipelineSettings.resizeFilter === filter) return;
+        this.pipelineSettings.resizeFilter = filter;
+        void this.reRender();
     }
 
     get effectEnabled() {
-        return this._effectEnabled;
+        return this.pipelineSettings.effectEnabled;
     }
 
     set effectEnabled(enabled: boolean) {
-        this._effectEnabled = enabled;
-        void this.queueRender();
+        if (this.pipelineSettings.effectEnabled === enabled) return;
+        this.pipelineSettings.effectEnabled = enabled;
+        void this.reRender();
     }
 
     get state(): 'playing' | 'paused' {
@@ -254,19 +337,16 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             const timestamp = this.queuedSeekTime;
             if (timestamp === null) return;
             this.playbackStartTimeMedia = timestamp;
-            const generation = this.generation;
-            //const start = performance.now();
+            const ac = this.playbackAbortController;
             const sample = await this.videoSink.getSample(timestamp);
-            //const time = performance.now() - start;
-            //console.log(`seek: ${time}ms`);
-            // Another seek event may have occurred in the meantime
-            if (generation !== this.generation || this.playbackStartTimeMedia !== timestamp) {
-                sample?.close();
-                void queueSeek();
-                return;
-            }
             this.setCurrentFrame(sample);
-            await this.queueRender();
+            // We *could* check if the seek event is outdated after awaiting getSample, but in practice that makes
+            // scrubbing appear a lot laggier since most frames never render at all.
+            await this.reRender();
+            // Another seek event may have occurred in the meantime
+            if (ac.signal.aborted || this.queuedSeekTime !== timestamp) {
+                return queueSeek();
+            }
             this.queuedSeekTime = null;
         };
 
@@ -274,6 +354,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     private startPlaying() {
+        const ac = this.playbackAbortController;
+        const signal = ac.signal;
         if (this.audioContext.state === 'suspended' || this.audioContext.state === 'interrupted') {
             void this.audioContext.resume();
         }
@@ -284,14 +366,13 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
 
         this.playbackStartTimeGlobal = this.audioContext.currentTime;
-        const generation = this.generation;
 
         if (this.audioSink) {
             const audioBufferIterator = this.audioSink.buffers(this.playbackStartTimeMedia);
             const runAudioIterator = async() => {
                 for await (const {buffer, timestamp} of audioBufferIterator) {
                     const playbackStartTimeGlobal = this.playbackStartTimeGlobal;
-                    if (playbackStartTimeGlobal === null || generation !== this.generation) break;
+                    if (playbackStartTimeGlobal === null || signal.aborted) break;
                     const node = this.audioContext.createBufferSource();
                     node.buffer = buffer;
                     node.connect(this.gainNode);
@@ -325,49 +406,70 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             this.audioBufferIterator = audioBufferIterator;
         }
 
-        const videoSampleIterator = this.videoSink.samples(this.playbackStartTimeMedia);
+        const presentationLoop = new PresentationLoop(this.presentationQueue, signal, this.getPlaybackTime.bind(this));
+        presentationLoop.addEventListener('present', event => {
+            if (signal.aborted) {
+                event.frame.close();
+                return;
+            }
+            this.setCurrentFrame(event.frame);
+            this.presentImage(event.imageBitmap, event.frame.timestamp);
+        });
+        presentationLoop.addEventListener('done', () => {
+            this.stopPlaying();
+            if (this.playbackStartTimeMedia < this._duration) {
+                this.playbackStartTimeMedia = this._duration;
+                this.dispatchEvent(new FrameEvent(this._duration));
+            }
+        }, {signal, once: true});
+        this.presentationLoop = presentationLoop;
+        this.startVideoIterator(this.playbackStartTimeMedia, presentationLoop);
+
+        this.dispatchEvent(new StateChangeEvent('playing'));
+    }
+
+    private startVideoIterator(timestamp: number, presentationLoop: PresentationLoop) {
+        if (!presentationLoop) return;
+        this.videoAbortController?.abort();
+        this.clearPresentationQueue();
+        const playbackSignal = this.playbackAbortController.signal;
+        this.videoAbortController = new AbortController();
+        const videoSignal = this.videoAbortController.signal;
+        const videoSampleIterator = this.videoSink.samples(timestamp);
         const runVideoIterator = async() => {
             for await (const nextFrame of videoSampleIterator) {
-                if (generation !== this.generation) {
+                if (playbackSignal.aborted || videoSignal.aborted) {
                     nextFrame.close();
                     break;
                 }
 
-                const getFrame = await this.processFrame(nextFrame, generation);
-                if (generation !== this.generation) {
-                    void getFrame();
+                // Drop input frames if we're starting to fall behind
+                if (nextFrame.timestamp + (nextFrame.duration * 0.5) < this.getPlaybackTime()) {
+                    nextFrame.close();
+                    continue;
+                }
+
+                const videoFrame = nextFrame.toVideoFrame();
+                const frameNum = this.frameRate * nextFrame.timestamp;
+                const getFrame = await this.effectPool.processFrame({
+                    frame: videoFrame,
+                    frameNum,
+                    ...this.pipelineSettings,
+                });
+                const node = new PresentationNode(nextFrame, getFrame);
+                if (playbackSignal.aborted || videoSignal.aborted) {
+                    node.destroy();
                     break;
                 }
-                this.enqueueForPresentation(
-                    getFrame,
-                    nextFrame.timestamp,
-                    nextFrame.duration,
-                );
-                this.ensurePresenter(generation);
+                this.presentationQueue.pushBack(node);
+                //await new Promise(resolve => requestAnimationFrame(resolve));
             }
 
-            // Drain any remaining frames in flight.
-            while (this.presentationHead && generation === this.generation) {
-                this.ensurePresenter(generation);
-                if (this.presenterPromise) {
-                    await this.presenterPromise;
-                } else {
-                    break;
-                }
-            }
-
-            if (generation === this.generation) {
-                this.stopPlaying();
-                if (this.playbackStartTimeMedia < this._duration) {
-                    this.playbackStartTimeMedia = this._duration;
-                    this.dispatchEvent(new FrameEvent(this._duration));
-                }
-            }
+            if (!(playbackSignal.aborted || videoSignal.aborted)) presentationLoop.eos();
         };
         void runVideoIterator();
+        void this.videoSampleIterator?.return();
         this.videoSampleIterator = videoSampleIterator;
-
-        this.dispatchEvent(new StateChangeEvent('playing'));
     }
 
     private stopPlaying() {
@@ -379,10 +481,14 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.videoSampleIterator = null;
         for (const node of this.queuedAudioNodes) {
             node.stop();
+            node.disconnect();
         }
+        this.presentationLoop = null;
+        this.videoAbortController = null;
         this.queuedAudioNodes.clear();
+        this.playbackAbortController.abort();
+        this.playbackAbortController = new AbortController();
         this.clearPresentationQueue();
-        this.generation++;
 
         this.dispatchEvent(new StateChangeEvent('paused'));
     }
@@ -394,133 +500,72 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         return this.playbackStartTimeMedia;
     }
 
-    private queueRender() {
-        if (!this.queuedRender) {
-            this.queuedRender = new Promise((resolve, reject) => {
-                requestAnimationFrame(() => {
-                    this.renderCurrentFrame().then(resolve, reject);
-                });
-            });
+    private reRender(): Promise<void> | void {
+        if (this.presentationLoop) {
+            this.startVideoIterator(this.lastDisplayedFrameTime, this.presentationLoop);
+            return;
         }
+        if (this.queuedRender) {
+            this.rerenderPending = true;
+            return this.queuedRender;
+        }
+
+        this.queuedRender = (async() => {
+            if (!this.currentFrame || !this._canvas || !this.ctx) {
+                this.queuedRender = null;
+                return;
+            }
+
+            const frame = this.currentFrame;
+            const videoFrame = frame.toVideoFrame();
+            const frameNum = this.frameRate * frame.timestamp;
+            const getFrame = await this.effectPool.processFrame({
+                frame: videoFrame,
+                frameNum,
+                ...this.pipelineSettings,
+            });
+            const imageBitmap = await getFrame();
+            this.queuedRender = null;
+            if (this.rerenderPending) {
+                this.rerenderPending = false;
+                return this.reRender();
+            }
+            // Return early if we started playback in the meantime
+            if (this.presentationLoop) return;
+            this.presentImage(imageBitmap, frame.timestamp);
+        })();
 
         return this.queuedRender;
     }
 
-    private async renderCurrentFrame() {
-        this.queuedRender = null;
-        if (!this.currentFrame || !this._canvas || !this.ctx) return;
-
-        const frame = this.currentFrame;
-        const getFrame = await this.processFrame(frame.clone(), this.generation);
-        const imageData = await getFrame();
-        if (!imageData) return;
-        this.presentImage(imageData, frame.timestamp);
-    }
-
     private setCurrentFrame(currentFrame: VideoSample | null) {
-        if (this.currentFrame) this.currentFrame.close();
+        this.currentFrame?.close();
         this.currentFrame = currentFrame;
         if (currentFrame) {
             this.dispatchEvent(new FrameEvent(currentFrame.timestamp));
         }
     }
 
-    private enqueueForPresentation(
-        promise: () => Promise<ImageBitmap | null>,
-        timestamp: number,
-        duration: number,
-    ) {
-        const node = {promise, timestamp, duration, next: null as PresentationNode};
-        if (this.presentationTail) {
-            this.presentationTail.next = node;
-            this.presentationTail = node;
-        } else {
-            this.presentationHead = this.presentationTail = node;
-        }
-    }
-
-    private ensurePresenter(generation: number) {
-        if (!this.presentationHead) return;
-        if (!this.presenterPromise) {
-            this.presenterPromise = this.presentLoop(generation).finally(() => {
-                this.presenterPromise = null;
-            });
-        }
-    }
-
-    private async presentLoop(generation: number) {
-        while (this.presentationHead && generation === this.generation) {
-            const node = this.presentationHead;
-            this.presentationHead = node.next;
-            if (!node.next) this.presentationTail = null;
-
-            const imageData = await node.promise();
-
-            if (generation !== this.generation) continue;
-            if (!imageData) continue;
-
-            // Pacing: wait until this frame's timestamp matches the playback clock.
-            while (node.timestamp > this.getPlaybackTime() && generation === this.generation) {
-                await new Promise(resolve => requestAnimationFrame(resolve));
-            }
-            if (generation !== this.generation) continue;
-
-            this.presentImage(imageData, node.timestamp);
-        }
-    }
-
     private clearPresentationQueue() {
-        let node;
-        while ((node = this.presentationHead)) {
-            void node.promise();
-            this.presentationHead = node.next;
+        for (const node of this.presentationQueue.drain()) {
+            // Release the workers back into the pool
+            node.destroy();
         }
-        this.presentationTail = null;
-        this.presenterPromise = null;
     }
 
-    private async processFrame(frame: VideoSample, generation: number): Promise<() => Promise<ImageBitmap | null>> {
-        const frameNum = this.frameRate * frame.timestamp;
-        const videoFrame = frame.toVideoFrame();
-        frame.close();
-        const runner = await this.effectPool.getNextWorker<ImageBitmap | null>();
-        const payload: RenderFrame = {
-            frame: videoFrame,
-            resizeHeight: this._resizeHeight,
-            resizeFilter: this._resizeFilter,
-            effectEnabled: this._effectEnabled,
-            frameNum,
-        };
-
-        // This is a two-step process. First, we send the frame to the worker to be processed immediately. However, the
-        // "runner" callback intentionally does not finish until someone calls the function we return to access the
-        // frame. This means that the number of in-flight frames is naturally limited to the number of workers in the
-        // pool.
-        let release: () => void;
-        const waitForRelease = new Promise<void>(resolve => {
-            release = resolve;
-        });
-        const framePromise = runner(async worker => {
-            const renderedFrame = await worker.send('render-frame', payload, [videoFrame]);
-            await waitForRelease;
-            return renderedFrame;
-        });
-
-        return () => {
-            release();
-            return framePromise;
-        };
-    }
-
-    private presentImage(imageData: ImageBitmap, timestamp: number) {
+    private presentImage(imageBitmap: ImageBitmap, timestamp: number) {
         if (!this._canvas || !this.ctx) return;
         const canvas = this._canvas;
         const ctx = this.ctx;
-        if (canvas.width !== imageData.width || canvas.height !== imageData.height) {
-            canvas.width = imageData.width;
-            canvas.height = imageData.height;
+        if (canvas.width !== imageBitmap.width || canvas.height !== imageBitmap.height) {
+            canvas.width = imageBitmap.width;
+            canvas.height = imageBitmap.height;
         }
-        ctx.transferFromImageBitmap(imageData);
+        // Look at me, I'm a WHATWG committee member and I think allocation and garbage collection are completely free.
+        // Buffer swap? Memory pool? What is this, 1995? Just allocate an entirely new backing store each frame and let
+        // the garbage collector take care of it!
+        ctx.transferFromImageBitmap(imageBitmap);
+        this.lastDisplayedFrameTime = timestamp;
         this.dispatchEvent(new FrameEvent(timestamp));
     }
 
@@ -528,5 +573,6 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.input.dispose();
         this.setCurrentFrame(null);
         this.effectPool.destroy();
+        this.clearPresentationQueue();
     }
 }

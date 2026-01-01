@@ -1,4 +1,4 @@
-import {batch, effect, signal, Signal} from '@preact/signals';
+import {batch, computed, effect, ReadonlySignal, signal, Signal} from '@preact/signals';
 import {createContext} from 'preact';
 import {useContext} from 'preact/hooks';
 
@@ -17,6 +17,7 @@ export type EffectPreviewMode = 'enabled' | 'disabled';
 
 export class AppState {
     settings: Record<string, Signal<number | boolean>>;
+    settingsAsObject: ReadonlySignal<Record<string, number | boolean>>;
     resizeEnabled: Signal<boolean>;
     resizeHeight: Signal<number>;
     resizeFilter: Signal<ResizeFilter>;
@@ -43,6 +44,18 @@ export class AppState {
         addFromDescriptors(SETTINGS_DESCRIPTORS);
 
         this.settings = flatSettings;
+        this.settingsAsObject = computed(() => {
+            const settingValues: Record<string, number | boolean> = {};
+            for (const settingId in this.settings) {
+                if (!Object.prototype.hasOwnProperty.call(this.settings, settingId)) {
+                    continue;
+                }
+
+                settingValues[settingId] = this.settings[settingId].value;
+            }
+            settingValues.version = 1;
+            return settingValues;
+        });
         this.resizeEnabled = signal(true);
         this.resizeHeight = signal(480);
         this.resizeFilter = signal(ResizeFilter.Bilinear);
@@ -62,7 +75,7 @@ export class AppState {
 
         this.cleanupCallbacks.push(effect(() => {
             const savedState = {
-                settings: this.settingsAsObject(),
+                settings: this.settingsAsObject.value,
                 resizeEnabled: this.resizeEnabled.value,
                 resizeHeight: this.resizeHeight.value,
                 resizeFilter: this.resizeFilter.value,
@@ -73,19 +86,6 @@ export class AppState {
 
             persistSettingsThrottled(savedState);
         }));
-    }
-
-    settingsAsObject() {
-        const settingValues: Record<string, number | boolean> = {};
-        for (const settingId in this.settings) {
-            if (!Object.prototype.hasOwnProperty.call(this.settings, settingId)) {
-                continue;
-            }
-
-            settingValues[settingId] = this.settings[settingId].value;
-        }
-        settingValues.version = 1;
-        return settingValues;
     }
 
     settingsFromObject(settingsObj: Record<string, number | boolean>) {

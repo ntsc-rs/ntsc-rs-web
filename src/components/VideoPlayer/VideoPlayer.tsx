@@ -3,7 +3,7 @@ import style from './style.module.scss';
 import {useCallback, useEffect, useLayoutEffect, useMemo} from 'preact/hooks';
 import {useAppState} from '../../app-state';
 import MediaPlayer, {FrameEvent, StateChangeEvent} from '../../util/media-player';
-import {useComputed, useSignal, useSignalEffect} from '@preact/signals';
+import {useComputed, useSignal} from '@preact/signals';
 import {CheckboxToggle, ImperativeSlider, SelectableButton, Slider, SpinBox} from '../Widgets/Widgets';
 import Icon, {IconButton} from '../Icon/Icon';
 import showOpenFilePicker from '../../util/file-picker';
@@ -11,6 +11,7 @@ import {useAddErrorToast} from '../Toast/Toast';
 import {TargetedEvent} from 'preact';
 import formatTimestamp from '../../util/format-timestamp';
 import classNames from 'clsx';
+import Loader from '../Loader/Loader';
 
 type MediaPlayerState =
     {state: 'not_loaded'} |
@@ -26,7 +27,12 @@ const VideoPlayer = () => {
 
     useEffect(() => {
         if (mediaBlob) {
-            MediaPlayer.init(mediaBlob).then(player => {
+            MediaPlayer.create(mediaBlob, {
+                resizeHeight: appState.resizeHeight.value,
+                resizeFilter: appState.resizeFilter.value,
+                effectEnabled: appState.effectPreviewMode.value === 'enabled',
+                effectSettings: appState.settingsAsObject.value,
+            }).then(player => {
                 mediaPlayer.value = {state: 'loaded', player};
             }, error => {
                 mediaPlayer.value = {state: 'error', error: error as Error};
@@ -48,7 +54,9 @@ const VideoPlayer = () => {
         const playerState = mediaPlayer.value;
         switch (playerState.state) {
             case 'not_loaded': return <MediaDropZone />;
-            case 'loading': return <div class={style.loadingState}>Loading...</div>;
+            case 'loading': return <div class={style.loadingState}>
+                <Loader />
+            </div>;
             case 'loaded': return <div className={style.playerVideoPane}>
                 <VideoPaneInner player={playerState.player} />
             </div>;
@@ -311,20 +319,9 @@ const VideoPaneInner = ({player}: {player: MediaPlayer}) => {
     useLayoutEffect(() => {
         player.resizeFilter = appState.resizeFilter.value;
     }, [appState.resizeFilter.value]);
-    useSignalEffect(() => {
-        const settingValues: Record<string, number | boolean> = {};
-        const currentSettings = appState.settings;
-        for (const settingId in currentSettings) {
-            if (!Object.prototype.hasOwnProperty.call(currentSettings, settingId)) {
-                continue;
-            }
-
-            settingValues[settingId] = currentSettings[settingId].value;
-        }
-        settingValues.version = 1;
-
-        void player.setEffectSettings(settingValues);
-    });
+    useLayoutEffect(() => {
+        player.effectSettings = appState.settingsAsObject.value;
+    }, [appState.settingsAsObject.value]);
 
     const zoomStyle = useMemo(() => {
         if (appState.zoomFit.value) {

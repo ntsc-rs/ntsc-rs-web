@@ -18,6 +18,16 @@ export type RenderFrame = {
 export type WorkerSchema =
     | {
         request: {
+            name: 'init';
+            message: null;
+        };
+        response: {
+            name: 'initialized';
+            message: null;
+        };
+    }
+    | {
+        request: {
             name: 'render-frame';
             message: RenderFrame;
         };
@@ -47,13 +57,26 @@ const listener = async(event: MessageEvent) => {
 
     try {
         switch (message.type) {
-            case 'render-frame': {
-                const data = await renderFrame(message.message);
+            case 'init': {
+                await effectData;
                 postMessageFromWorker<WorkerSchema>({
-                    type: 'rendered-frame',
-                    message: data,
+                    type: 'initialized',
+                    message: null,
                     originId: message.id,
-                }, [data]);
+                });
+                break;
+            }
+            case 'render-frame': {
+                try {
+                    const data = await renderFrame(message.message);
+                    postMessageFromWorker<WorkerSchema>({
+                        type: 'rendered-frame',
+                        message: data,
+                        originId: message.id,
+                    }, [data]);
+                } finally {
+                    message.message.frame.close();
+                }
                 break;
             }
             case 'update-settings': {
@@ -119,7 +142,10 @@ const renderFrame = async({frame, resizeHeight, resizeFilter, effectEnabled, fra
             dstFrameWasm.byteOffset,
             dstFrameWasm.byteLength,
         );
-        return await createImageBitmap(new ImageData(dstFrameClamped, outputWidth, outputHeight));
+        return await createImageBitmap(new ImageData(dstFrameClamped, outputWidth, outputHeight), {
+            premultiplyAlpha: 'none',
+            colorSpaceConversion: 'none',
+        });
     });
 };
 

@@ -76,6 +76,10 @@ export default class RpcDispatcher<T extends MessageSchema> {
         this.inflightRequests++;
         return new Promise((resolve, reject) => {
             const ac = new AbortController();
+            const respName = this.map[name as unknown as keyof ReqRespMap<T>];
+            if (typeof respName !== 'string') {
+                throw new Error(`${name} doesn't return a value. Use sendAndForget instead.`);
+            }
             worker.addEventListener('message', msg => {
                 const data = msg.data as MessageFromWorker<T>;
                 if (data.originId !== id) return;
@@ -84,7 +88,7 @@ export default class RpcDispatcher<T extends MessageSchema> {
                 if (this.inflightRequests === 0 && this.deferClose) {
                     this.worker.terminate();
                 }
-                if (data.type === this.map[name as unknown as keyof ReqRespMap<T>]) {
+                if (data.type === respName) {
                     ac.abort();
                     resolve(data.message);
                 } else if (data.type === 'error') {
