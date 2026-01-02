@@ -1,7 +1,7 @@
 import style from './style.module.scss';
 import slider from './slider.module.scss';
 
-import type {ComponentChildren, HTMLAttributes, JSX, Ref, TargetedEvent} from 'preact';
+import type {ButtonHTMLAttributes, ComponentChildren, InputHTMLAttributes, JSX, Ref, TargetedEvent} from 'preact';
 import {useCallback, useEffect, useId, useLayoutEffect, useRef} from 'preact/hooks';
 import {useSignal, type Signal} from '@preact/signals';
 import classNames from 'clsx';
@@ -9,7 +9,7 @@ import Icon, {IconType} from '../Icon/Icon';
 import {Motif} from '../../util/motif';
 
 export const Dropdown = <T extends string | number>({value, options, className, disabled}: {
-    value: Signal<T>;
+    value: Signal<T | null>;
     options: readonly {
         id: T;
         name: string;
@@ -186,7 +186,7 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
             <div className={style.spinboxButtons}>
                 <button
                     onClick={increment}
-                    disabled={disabled}
+                    disabled={disabled || (value.value === max)}
                     className={style.spinboxButton}
                     role="button"
                     aria-controls={spinboxId}
@@ -197,7 +197,7 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
                 <div className={style.spinboxButtonDivider} />
                 <button
                     onClick={decrement}
-                    disabled={disabled}
+                    disabled={disabled || (value.value === min)}
                     className={style.spinboxButton}
                     role="button"
                     aria-controls={spinboxId}
@@ -344,11 +344,14 @@ export const CheckboxToggle = ({label, title, checked, disabled, indeterminate, 
         event.stopPropagation();
     }, []);
 
+    const id = useId();
+
     return (
         <label
             className={classNames(style.checkboxToggle, disabled && style.disabled, className)}
             title={title ?? undefined}
             aria-disabled={disabled}
+            for={id}
         >
             <input
                 type="checkbox"
@@ -356,6 +359,7 @@ export const CheckboxToggle = ({label, title, checked, disabled, indeterminate, 
                 onInput={handleInput}
                 disabled={disabled}
                 indeterminate={indeterminate}
+                id={id}
             />
             <span className={style.checkboxLabel} onMouseDown={preventSelection}>{label}</span>
         </label>
@@ -367,7 +371,7 @@ export const TextBox = ({
     small,
     className,
     ...props
-}: {value: Signal<string>; small?: boolean} & HTMLAttributes<HTMLInputElement>) => {
+}: {value: Signal<string>; small?: boolean} & InputHTMLAttributes<HTMLInputElement>) => {
     const updateTextbox = useCallback((event: TargetedEvent<HTMLInputElement>) => {
         value.value = event.currentTarget.value;
     }, [value]);
@@ -385,7 +389,7 @@ export const TextBox = ({
 
 export const Button = ({children, className, ...props}: {
     children: ComponentChildren
-} & HTMLAttributes<HTMLButtonElement>) => {
+} & ButtonHTMLAttributes<HTMLButtonElement>) => {
     return (
         <button {...props} className={classNames(style.button, className)}>
             <span className={style.buttonContents}>

@@ -1,4 +1,7 @@
-use ntscrs::{NtscEffectFullSettings, settings::{EnumValue, SettingDescriptor, SettingKind, Settings as _, SettingsList}};
+use ntscrs::{
+    settings::{EnumValue, SettingDescriptor, SettingKind, Settings as _, SettingsList},
+    NtscEffectFullSettings,
+};
 use sval_json::stream_to_string;
 use wasm_bindgen::prelude::*;
 
@@ -62,7 +65,10 @@ trait StreamExt<'sval> {
     fn map_key(&mut self, key: &'sval str) -> sval::Result;
 }
 
-impl<'sval, T> StreamExt<'sval> for T where T: sval::Stream<'sval> {
+impl<'sval, T> StreamExt<'sval> for T
+where
+    T: sval::Stream<'sval>,
+{
     fn text(&mut self, text: &'sval str) -> sval::Result {
         self.text_begin(Some(text.len()))?;
         self.text_fragment(text)?;
@@ -100,7 +106,10 @@ pub enum NtscDescriptorKind {
 }
 
 impl sval::Value for DescriptorList<'_> {
-    fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(&'sval self, mut stream: &mut S) -> sval::Result {
+    fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(
+        &'sval self,
+        mut stream: &mut S,
+    ) -> sval::Result {
         let default_settings = self.default_settings;
         stream.seq_begin(Some(self.descriptors.len()))?;
 
@@ -144,8 +153,7 @@ impl sval::Value for DescriptorList<'_> {
                     stream.map_value_end()?;
                 }
                 SettingKind::Percentage { logarithmic, .. } => {
-                    let default_value =
-                        default_settings.get_field::<f32>(&descriptor.id).unwrap();
+                    let default_value = default_settings.get_field::<f32>(&descriptor.id).unwrap();
 
                     stream.map_kv("kind", NtscDescriptorKind::Percentage as u32)?;
                     stream.map_key("value")?;
@@ -159,8 +167,7 @@ impl sval::Value for DescriptorList<'_> {
                     stream.map_value_end()?;
                 }
                 SettingKind::IntRange { range, .. } => {
-                    let default_value =
-                        default_settings.get_field::<i32>(&descriptor.id).unwrap();
+                    let default_value = default_settings.get_field::<i32>(&descriptor.id).unwrap();
 
                     stream.map_kv("kind", NtscDescriptorKind::IntRange as u32)?;
                     stream.map_key("value")?;
@@ -177,8 +184,7 @@ impl sval::Value for DescriptorList<'_> {
                 SettingKind::FloatRange {
                     range, logarithmic, ..
                 } => {
-                    let default_value =
-                        default_settings.get_field::<f32>(&descriptor.id).unwrap();
+                    let default_value = default_settings.get_field::<f32>(&descriptor.id).unwrap();
 
                     stream.map_kv("kind", NtscDescriptorKind::FloatRange as u32)?;
                     stream.map_key("value")?;
@@ -194,8 +200,7 @@ impl sval::Value for DescriptorList<'_> {
                     stream.map_value_end()?;
                 }
                 SettingKind::Boolean { .. } => {
-                    let default_value =
-                        default_settings.get_field::<bool>(&descriptor.id).unwrap();
+                    let default_value = default_settings.get_field::<bool>(&descriptor.id).unwrap();
 
                     stream.map_kv("kind", NtscDescriptorKind::Boolean as u32)?;
                     stream.map_key("value")?;
@@ -208,8 +213,7 @@ impl sval::Value for DescriptorList<'_> {
                     stream.map_value_end()?;
                 }
                 SettingKind::Group { children, .. } => {
-                    let default_value =
-                        default_settings.get_field::<bool>(&descriptor.id).unwrap();
+                    let default_value = default_settings.get_field::<bool>(&descriptor.id).unwrap();
 
                     stream.map_kv("kind", NtscDescriptorKind::Group as u32)?;
                     stream.map_key("value")?;
@@ -269,12 +273,19 @@ impl NtscSettingsList {
 
     #[wasm_bindgen(js_name = "parsePreset")]
     pub fn parse_preset(&self, json: &str) -> Result<String, String> {
-        Ok(stream_to_string(self.0.to_json(&self.0.from_json(json).map_err(|e| e.to_string())?)).map_err(|e| e.to_string())?)
+        Ok(stream_to_string(
+            self.0
+                .to_json(&self.0.from_json(json).map_err(|e| e.to_string())?),
+        )
+        .map_err(|e| e.to_string())?)
     }
 
     #[wasm_bindgen(js_name = "defaultPreset")]
     pub fn default_preset(&self) -> Result<String, String> {
-        Ok(stream_to_string(self.0.to_json(&NtscEffectFullSettings::default())).map_err(|e| e.to_string())?)
+        Ok(
+            stream_to_string(self.0.to_json(&NtscEffectFullSettings::default()))
+                .map_err(|e| e.to_string())?,
+        )
     }
 }
 

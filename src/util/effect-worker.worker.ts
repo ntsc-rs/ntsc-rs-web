@@ -13,6 +13,7 @@ export type RenderFrame = {
     resizeFilter: ResizeFilter,
     effectEnabled: boolean,
     frameNum: number,
+    padToEven: boolean,
 };
 
 export type WorkerSchema =
@@ -28,12 +29,22 @@ export type WorkerSchema =
     }
     | {
         request: {
-            name: 'render-frame';
+            name: 'render-frame-to-bitmap';
             message: RenderFrame;
         };
         response: {
-            name: 'rendered-frame';
+            name: 'rendered-frame-to-bitmap';
             message: ImageBitmap;
+        };
+    }
+    | {
+        request: {
+            name: 'render-frame-to-videoframe';
+            message: RenderFrame;
+        };
+        response: {
+            name: 'rendered-frame-to-videoframe';
+            message: VideoFrame;
         };
     }
     | {
@@ -66,11 +77,24 @@ const listener = async(event: MessageEvent) => {
                 });
                 break;
             }
-            case 'render-frame': {
+            case 'render-frame-to-bitmap': {
                 try {
-                    const data = await renderFrame(message.message);
+                    const data = await renderFrame(message.message, 'imagebitmap');
                     postMessageFromWorker<WorkerSchema>({
-                        type: 'rendered-frame',
+                        type: 'rendered-frame-to-bitmap',
+                        message: data,
+                        originId: message.id,
+                    }, [data]);
+                } finally {
+                    message.message.frame.close();
+                }
+                break;
+            }
+            case 'render-frame-to-videoframe': {
+                try {
+                    const data = await renderFrame(message.message, 'videoframe');
+                    postMessageFromWorker<WorkerSchema>({
+                        type: 'rendered-frame-to-videoframe',
                         message: data,
                         originId: message.id,
                     }, [data]);
@@ -103,24 +127,31 @@ const listener = async(event: MessageEvent) => {
     }
 };
 
-const renderFrame = async({frame, resizeHeight, resizeFilter, effectEnabled, frameNum}: RenderFrame) => {
+export type Formats = {
+    imagebitmap: ImageBitmap,
+    videoframe: VideoFrame,
+};
+
+const renderFrame = async<F extends keyof Formats>(
+    {frame, resizeHeight, resizeFilter, effectEnabled, frameNum, padToEven}: RenderFrame,
+    format: F,
+): Promise<Formats[F]> => {
     const {effect} = await effectData;
     return await effect.withValue(async effect => {
-        effect.setInputSize(frame.codedWidth, frame.codedHeight);
+        const visibleRect = frame.visibleRect!;
         let outputWidth, outputHeight;
         if (resizeHeight !== null) {
             const resizedWidth = Math.round(
-                frame.codedWidth * resizeHeight /  frame.codedHeight);
+                visibleRect.width * resizeHeight /  visibleRect.height);
             outputWidth = resizedWidth;
             outputHeight = resizeHeight;
         } else {
-            outputWidth = frame.codedWidth;
-            outputHeight = frame.codedHeight;
+            outputWidth = visibleRect.width;
+            outputHeight = visibleRect.height;
         }
-        effect.setResizeFilter(resizeFilter);
-        effect.setOutputSize(outputWidth, outputHeight);
-        effect.setEffectEnabled(effectEnabled);
-        const sourceFrameWasm = effect.srcPtr();
+        const sourceFrameWasm = effect.inputBuffer(visibleRect.width, visibleRect.height);
+        const paddedWidth = padToEven ? outputWidth + (outputWidth % 2) : outputWidth;
+        const paddedHeight = padToEven ? outputHeight + (outputHeight % 2) : outputHeight;
         // For some stupid reason, this method is async! Why is a simple colorspace conversion async? The committee
         // says so, so it must be! Sync bad, async good! Race conditions are muuuuuch better than two frames of
         // jank! Async good, jank bad! Never mind that the WebAssembly memory might be invalidated by the time we're
@@ -133,19 +164,36 @@ const renderFrame = async({frame, resizeHeight, resizeFilter, effectEnabled, fra
         // bajillion different race conditions because the committees who design these APIs never have to actually
         // use them.
         await frame.copyTo(sourceFrameWasm, {format: 'RGBX', colorSpace: 'srgb'});
-        console.time('applyEffect');
-        effect.applyEffect(frameNum);
-        console.timeEnd('applyEffect');
-        const dstFrameWasm = effect.dstPtr();
+        //console.time('applyEffect');
+        const dstFrameWasm = effect.applyEffect(
+            frameNum,
+            outputWidth,
+            outputHeight,
+            resizeFilter,
+            padToEven,
+            effectEnabled,
+        );
+        //console.timeEnd('applyEffect');
         const dstFrameClamped = new Uint8ClampedArray(
             dstFrameWasm.buffer as ArrayBuffer,
             dstFrameWasm.byteOffset,
             dstFrameWasm.byteLength,
         );
-        return await createImageBitmap(new ImageData(dstFrameClamped, outputWidth, outputHeight), {
-            premultiplyAlpha: 'none',
-            colorSpaceConversion: 'none',
-        });
+        switch (format) {
+            case 'imagebitmap':
+                return await createImageBitmap(new ImageData(dstFrameClamped, paddedWidth, paddedHeight), {
+                    premultiplyAlpha: 'none',
+                    colorSpaceConversion: 'none',
+                }) as Formats[F];
+            case 'videoframe':
+                return new VideoFrame(dstFrameClamped, {
+                    format: 'RGBX',
+                    codedWidth: paddedWidth,
+                    codedHeight: paddedHeight,
+                    timestamp: frame.timestamp,
+                    duration: frame.duration ?? undefined,
+                }) as Formats[F];
+        }
     });
 };
 

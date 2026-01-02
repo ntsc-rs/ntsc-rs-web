@@ -29,6 +29,7 @@
 
 .video-info-bar {
     display: flex;
+    flex: 0 0 2em;
     align-items: center;
     border-bottom: 1px solid theme.$divider;
     background-color: theme.$base-color-primary;

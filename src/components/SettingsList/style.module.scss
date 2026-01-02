@@ -15,7 +15,7 @@
 
 .settings-list, .group-box-children {
     display: grid;
-    grid-template-columns: 1fr 18ch;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: 1rem;
     align-items: center;
 
@@ -36,13 +36,18 @@
     }
 }
 
+.setting-label {
+    font-size: 0.9rem
+}
+
 .slider-with-spinbox {
     display: flex;
     align-items: center;
     gap: 1rem;
 
     & > :first-child {
-        flex: 1 1 auto;
+        flex: 1 1 0;
+        min-width: 0;
     }
 }
 
@@ -98,7 +103,7 @@
 }
 
 .group-box-children {
-    padding: 0.5rem 0.75rem 0.75rem;
+    padding: 0.75rem 0.75rem 0.75rem 0.5rem;
 }
 
 .checkboxInput {

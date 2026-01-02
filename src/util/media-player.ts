@@ -1,18 +1,14 @@
 import {
-    ALL_FORMATS,
     AudioBufferSink,
-    BlobSource,
-    Input,
-    InputVideoTrack,
-    PacketStats,
+    InputAudioTrack,
     VideoSample,
-    VideoSampleSink,
     WrappedAudioBuffer,
 } from 'mediabunny';
 import {TypedEvent, TypedEventTarget} from './typed-events';
 import {ResizeFilter} from 'ntsc-rs-web-wrapper';
 import EffectWorkerPool from './effect-worker-pool';
 import Queue from './queue';
+import {VideoSampleSinkLike, WrappedInput} from './still-image-media';
 
 export class FrameEvent extends TypedEvent<'frame'> {
     frameTimestamp: number;
@@ -34,21 +30,6 @@ export class StateChangeEvent extends TypedEvent<'statechange'> {
     }
 }
 
-class PresentationNode {
-    frame: VideoSample;
-    promise: () => Promise<ImageBitmap>;
-
-    constructor(frame: VideoSample, promise: () => Promise<ImageBitmap>) {
-        this.frame = frame;
-        this.promise  = promise;
-    }
-
-    destroy() {
-        this.frame.close();
-        void this.promise();
-    }
-}
-
 class PresentEvent extends TypedEvent<'present'> {
     imageBitmap: ImageBitmap;
     frame: VideoSample;
@@ -63,6 +44,21 @@ class PresentEvent extends TypedEvent<'present'> {
 class DoneEvent extends TypedEvent<'done'> {
     constructor() {
         super('done');
+    }
+}
+
+class PresentationNode {
+    frame: VideoSample;
+    promise: () => Promise<ImageBitmap>;
+
+    constructor(frame: VideoSample, promise: () => Promise<ImageBitmap>) {
+        this.frame = frame;
+        this.promise  = promise;
+    }
+
+    destroy() {
+        this.frame.close();
+        void this.promise();
     }
 }
 
@@ -119,12 +115,9 @@ export type PipelineSettings = {
 };
 
 export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChangeEvent> {
-    private input: Input;
-    private videoTrack: InputVideoTrack;
-    private videoSink: VideoSampleSink;
+    private input: WrappedInput;
+    private videoSink: VideoSampleSinkLike;
     private audioSink: AudioBufferSink | null;
-    private packetStats: PacketStats;
-    private _duration: number;
     private audioContext: AudioContext;
     private gainNode: GainNode;
 
@@ -153,12 +146,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     private pipelineSettings: PipelineSettings;
 
     private constructor(
-        input: Input,
-        videoTrack: InputVideoTrack,
-        videoSink: VideoSampleSink,
+        input: WrappedInput,
         audioSink: AudioBufferSink | null,
-        packetStats: PacketStats,
-        duration: number,
         audioContext: AudioContext,
         gainNode: GainNode,
         currentFrame: VideoSample | null,
@@ -167,11 +156,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     ) {
         super();
         this.input = input;
-        this.videoTrack = videoTrack;
-        this.videoSink = videoSink;
+        this.videoSink = input.videoSink;
         this.audioSink = audioSink;
-        this.packetStats = packetStats;
-        this._duration = duration;
         this.audioContext = audioContext;
         this.gainNode = gainNode;
         this.currentFrame = currentFrame;
@@ -179,42 +165,23 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.pipelineSettings = settings;
     }
 
-    static async create(source: Blob, settings: PipelineSettings) {
-        const input = new Input({
-            source: new BlobSource(source),
-            formats: ALL_FORMATS,
-        });
-        const duration = await input.computeDuration();
-        const audioTrack = await input.getPrimaryAudioTrack();
-        const videoTrack = await input.getPrimaryVideoTrack();
-        if (!videoTrack) {
-            throw new Error('No input video track');
-        }
+    static async create(source: Blob, workerPool: Promise<EffectWorkerPool>, settings: PipelineSettings) {
+        const input = await WrappedInput.create(source, {calculateFrameRate: true});
 
-        if (!(await videoTrack.canDecode())) {
-            throw new Error('Cannot decode video track');
-        }
-
-        const packetStats = await videoTrack.computePacketStats(100);
-
+        const audioTrack: InputAudioTrack | undefined = input.audioTracks[0];
         const audioContext = new AudioContext({sampleRate: audioTrack?.sampleRate});
         const gainNode = audioContext.createGain();
         gainNode.connect(audioContext.destination);
         gainNode.gain.value = 1.0;
 
-        const videoSink = new VideoSampleSink(videoTrack);
         const audioSink = audioTrack ? new AudioBufferSink(audioTrack) : null;
 
-        const currentFrame = await videoSink.getSample(0);
-        const effectPool = await EffectWorkerPool.create();
+        const currentFrame = await input.videoSink.getSample(0);
+        const effectPool = await workerPool;
 
         return new MediaPlayer(
             input,
-            videoTrack,
-            videoSink,
             audioSink,
-            packetStats,
-            duration,
             audioContext,
             gainNode,
             currentFrame,
@@ -224,11 +191,11 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     get duration() {
-        return this._duration;
+        return this.input.duration;
     }
 
     get frameRate() {
-        return this.packetStats.averagePacketRate;
+        return this.input.frameRate!;
     }
 
     get timestamp() {
@@ -236,11 +203,11 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     get width() {
-        return this.videoTrack.codedWidth;
+        return this.input.visibleWidth;
     }
 
     get height() {
-        return this.videoTrack.codedHeight;
+        return this.input.visibleHeight;
     }
 
     get volume() {
@@ -263,8 +230,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this._canvas = canvas;
         if (canvas) {
             this.ctx = canvas.getContext('bitmaprenderer', {alpha: false});
-            canvas.width = this.videoTrack.codedWidth;
-            canvas.height = this.videoTrack.codedHeight;
+            canvas.width = this.input.visibleWidth;
+            canvas.height = this.input.visibleHeight;
             void this.reRender();
         } else {
             this.ctx = null;
@@ -361,7 +328,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
 
         // If we're at the end, restart the video from the beginning
-        if (this.playbackStartTimeMedia >= this._duration) {
+        if (this.playbackStartTimeMedia >= (this.input.duration ?? Infinity)) {
             this.playbackStartTimeMedia = 0;
         }
 
@@ -417,9 +384,9 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         });
         presentationLoop.addEventListener('done', () => {
             this.stopPlaying();
-            if (this.playbackStartTimeMedia < this._duration) {
-                this.playbackStartTimeMedia = this._duration;
-                this.dispatchEvent(new FrameEvent(this._duration));
+            if (this.input.duration !== null && this.playbackStartTimeMedia < this.input.duration) {
+                this.playbackStartTimeMedia = this.input.duration;
+                this.dispatchEvent(new FrameEvent(this.input.duration));
             }
         }, {signal, once: true});
         this.presentationLoop = presentationLoop;
@@ -454,8 +421,9 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
                 const getFrame = await this.effectPool.processFrame({
                     frame: videoFrame,
                     frameNum,
+                    padToEven: false,
                     ...this.pipelineSettings,
-                });
+                }, 'imagebitmap');
                 const node = new PresentationNode(nextFrame, getFrame);
                 if (playbackSignal.aborted || videoSignal.aborted) {
                     node.destroy();
@@ -522,8 +490,9 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             const getFrame = await this.effectPool.processFrame({
                 frame: videoFrame,
                 frameNum,
+                padToEven: false,
                 ...this.pipelineSettings,
-            });
+            }, 'imagebitmap');
             const imageBitmap = await getFrame();
             this.queuedRender = null;
             if (this.rerenderPending) {
@@ -570,9 +539,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     destroy() {
-        this.input.dispose();
+        this.input.close();
         this.setCurrentFrame(null);
-        this.effectPool.destroy();
         this.clearPresentationQueue();
     }
 }

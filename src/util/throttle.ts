@@ -1,5 +1,5 @@
 import {signal, Signal} from '@preact/signals';
-import {useEffect, useMemo, useRef} from 'preact/hooks';
+import {useLayoutEffect, useMemo, useRef} from 'preact/hooks';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const throttle = <F extends (...args: any[]) => void>(fn: F, delay: number, debounce = false):
@@ -40,7 +40,7 @@ export default throttle;
 export const useThrottledSignal = <T>(input: Signal<T>, delay: number, debounce = false) => {
     const throttled = useMemo(() => signal(input.peek()), [input]);
     const updateValueThrottled = useRef<(newValue: T) => void>();
-    useEffect(() => {
+    useLayoutEffect(() => {
         const newThrottleFn = throttle((newValue: T) => {
             throttled.value = newValue;
         }, delay, debounce);
@@ -50,7 +50,7 @@ export const useThrottledSignal = <T>(input: Signal<T>, delay: number, debounce 
         };
     }, [input, delay, debounce, throttle]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (updateValueThrottled.current && throttled.peek() !== input.value) {
             updateValueThrottled.current(input.value);
         }

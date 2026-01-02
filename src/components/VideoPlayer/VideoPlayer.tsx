@@ -9,13 +9,14 @@ import Icon, {IconButton} from '../Icon/Icon';
 import showOpenFilePicker from '../../util/file-picker';
 import {useAddErrorToast} from '../Toast/Toast';
 import {TargetedEvent} from 'preact';
-import formatTimestamp from '../../util/format-timestamp';
+import {formatTimestamp} from '../../util/format-timestamp';
 import classNames from 'clsx';
 import Loader from '../Loader/Loader';
+import {GLOBAL_WORKER_POOL} from '../../util/effect-worker-pool';
 
 type MediaPlayerState =
     {state: 'not_loaded'} |
-    {state: 'loading'} |
+    {state: 'loading', player: Promise<MediaPlayer | void>} |
     {state: 'loaded', player: MediaPlayer} |
     {state: 'error', error: Error};
 
@@ -27,25 +28,30 @@ const VideoPlayer = () => {
 
     useEffect(() => {
         if (mediaBlob) {
-            MediaPlayer.create(mediaBlob, {
+            const playerPromise = MediaPlayer.create(mediaBlob, GLOBAL_WORKER_POOL, {
                 resizeHeight: appState.resizeHeight.value,
                 resizeFilter: appState.resizeFilter.value,
                 effectEnabled: appState.effectPreviewMode.value === 'enabled',
                 effectSettings: appState.settingsAsObject.value,
             }).then(player => {
                 mediaPlayer.value = {state: 'loaded', player};
+                return player;
             }, error => {
                 mediaPlayer.value = {state: 'error', error: error as Error};
             });
-            mediaPlayer.value = {state: 'loading'};
+            mediaPlayer.value = {state: 'loading', player: playerPromise};
         } else {
             mediaPlayer.value = {state: 'not_loaded'};
         }
 
-        // TODO: this leaks memory if you switch files while the media player is loading
         return () => {
             if (mediaPlayer.value.state === 'loaded') {
                 mediaPlayer.value.player.destroy();
+            }
+            if (mediaPlayer.value.state === 'loading') {
+                void mediaPlayer.value.player.then(player => {
+                    player?.destroy();
+                });
             }
         };
     }, [mediaBlob]);
@@ -181,12 +187,12 @@ const VideoControls = ({player}: {player: MediaPlayer | null}) => {
     const toggleMute = useCallback(() => {
         mute.value = !mute.value;
     }, [mute]);
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!player) return;
         player.volume = mute.value ? 0 : volume.value * 0.01;
     }, [volume.value, mute.value, player]);
     const playing = useSignal(false);
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!player) return;
         const onStateChange = (event: StateChangeEvent) => {
             playing.value = event.state === 'playing';
@@ -196,7 +202,7 @@ const VideoControls = ({player}: {player: MediaPlayer | null}) => {
             player.removeEventListener('statechange', onStateChange);
         };
     }, [player]);
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!player) return;
         player.effectEnabled = effectPreviewMode.value === 'enabled';
     }, [effectPreviewMode.value, player]);
@@ -287,9 +293,10 @@ const VideoScrubber = ({player}: {player: MediaPlayer}) => {
         return formatTimestamp(scrubValue.value);
     });
     const totalDuration = useMemo(() => {
-        return formatTimestamp(player.duration);
+        return player.duration === null ? null : formatTimestamp(player.duration);
     }, [player]);
 
+    if (player.duration === null) return null;
     return (
         <div className={classNames(style.videoScrubber, 'tabular-nums')}>
             <div className={style.currentTimestamp}>{currentTimestamp.value}</div>

@@ -1,17 +1,38 @@
-const formatTimestamp = (seconds: number) => {
+const hms = <T>(seconds: number, cb: (hours: number, minutes: number, seconds: number) => T) => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const remainingSeconds = seconds % 60;
-
-    let result: string;
-    if (hours > 0) {
-        result = `${hours}:${minutes.toString().padStart(2, '0')}` +
-            `:${remainingSeconds.toFixed(2).padStart(5, '0')}`;
-    } else {
-        result = `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toFixed(2).padStart(5, '0')}`;
-    }
-
-    return result;
+    return cb(hours, minutes, remainingSeconds);
 };
 
-export default formatTimestamp;
+const formatTimestamp = (seconds: number) => {
+    return hms(seconds, (hours, minutes, seconds) => {
+        let result: string;
+        if (hours > 0) {
+            result = `${hours}:${minutes.toString().padStart(2, '0')}` +
+                `:${seconds.toFixed(2).padStart(5, '0')}`;
+        } else {
+            result = `${minutes.toString().padStart(2, '0')}:${seconds.toFixed(2).padStart(5, '0')}`;
+        }
+
+        return result;
+    });
+};
+
+const plural = (n: number) => n === 1 ? '' : 's';
+const formatTimestampHuman = (seconds: number) => {
+    return hms(seconds, (hours, minutes, seconds) => {
+        let result = '';
+        if (hours > 0) {
+            result += `${hours} hour${plural(hours)}, `;
+        }
+        if (minutes > 0) {
+            result += `${minutes} minute${plural(minutes)}, `;
+        }
+        result += `${seconds} second${plural(seconds)}`;
+
+        return result;
+    });
+};
+
+export {formatTimestamp, formatTimestampHuman};

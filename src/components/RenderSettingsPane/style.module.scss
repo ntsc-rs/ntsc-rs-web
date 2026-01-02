@@ -1,0 +1,110 @@
+@use '../../css/theme.scss';
+
+.render-pane-inner {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+}
+
+.render-settings {
+    flex: 0 0 auto;
+    border-bottom: 1px solid theme.$divider;
+    display: flex;
+    flex-direction: column;
+}
+
+.render-jobs {
+    flex: 1 1 0;
+    padding: theme.$pane-padding;
+    overflow: auto;
+}
+
+.codec-settings {
+    overflow: auto;
+    display: grid;
+    padding: theme.$pane-padding;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+
+    &.disabled {
+        color: theme.$text-detail;
+    }
+}
+
+.setting {
+    display: contents;
+
+    // Groups and checkboxes span both columns
+    &:has(.group-box),
+    &:has(.checkbox:not(.group-checkbox)) {
+        > * {
+            grid-column: 1 / -1;
+        }
+    }
+}
+
+.render-buttons {
+    display: flex;
+    flex: 1 1 0;
+    gap: 0.5rem;
+    padding: 1rem;
+    padding-top: 0;
+
+    & > * {
+        flex: 1 0 0;
+        min-width: max-content;
+    }
+}
+
+.render-jobs {
+    overflow: auto;
+}
+
+.render-job {
+    border: 1px solid theme.$divider;
+    border-radius: theme.$radius;
+    background-color: theme.$base-color-secondary-dark;
+    padding: 0.5rem;
+    margin-bottom: 1rem;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+
+    & progress {
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 0.25rem;
+    }
+}
+
+.render-job-header {
+    display: flex;
+    align-items: center;
+    padding-bottom: 0.5rem;
+}
+
+.render-job-name {
+    font-weight: 600;
+    flex: 1 1 0;
+    overflow: hidden;
+    padding-right: 0.5rem;
+    text-overflow: ellipsis;
+}
+
+.progress-timestamp, .eta {
+    font-size: 0.9rem;
+    margin: 0.25rem 0;
+}
+
+.status-line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.status-line-text {
+    flex: 1 1 0;
+}

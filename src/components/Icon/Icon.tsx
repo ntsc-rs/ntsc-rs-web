@@ -10,6 +10,7 @@ export type IconType =
     | 'arrow-right'
     | 'arrow-up'
     | 'arrow-left'
+    | 'cancel'
     | 'check'
     | 'close'
     | 'copy'

@@ -1,0 +1,14 @@
+- [ ] Still-image input
+  - [ ] Adjustable framerate
+  - [ ] Adjustable duration
+  - [ ] Spinbox-based time control
+- [ ] "Copy frame" and "Save frame" buttons
+- [ ] Image-sequence output in Chrome (the only browser with a directory picker)
+- [ ] OPFS-based preset manager?
+- [x] Video padding filter
+- [ ] FFV1 via WASM?
+- [ ] OPFS output (render jobs output to OPFS and have a "Save" button)
+  - [ ] Retain list of render jobs still in OPFS
+- [ ] Notify on render completion
+- [ ] Resizable panel widget from Glypht
+- [ ] Portrait mode

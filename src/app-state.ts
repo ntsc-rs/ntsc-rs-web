@@ -10,24 +10,36 @@ import init, {
     setPanicHook,
 } from 'ntsc-rs-web-wrapper';
 import throttle from './util/throttle';
+import RenderJob from './util/render-job';
+import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
 await init();
 //await initThreadPool(8);
 
 export type EffectPreviewMode = 'enabled' | 'disabled';
 
+export type AppVideoCodec = 'avc' | 'vp8' | 'vp9' | 'av1';
+
 export class AppState {
     settings: Record<string, Signal<number | boolean>>;
     settingsAsObject: ReadonlySignal<Record<string, number | boolean>>;
+
     resizeEnabled: Signal<boolean>;
     resizeHeight: Signal<number>;
     resizeFilter: Signal<ResizeFilter>;
+
     mute: Signal<boolean>;
     volume: Signal<number>;
+
     zoomFit: Signal<boolean>;
     zoomPercent: Signal<number>;
     effectPreviewMode: Signal<EffectPreviewMode>;
+
+    renderVideoCodec: Signal<AppVideoCodec | null>;
+    renderVideoBitrate: Signal<number>;
+
+    renderJobs: Signal<RenderJob[]>;
     mediaBlob: Signal<File | null>;
-    cleanupCallbacks: (() => unknown)[] = [];
+    private cleanupCallbacks: (() => unknown)[] = [];
 
     constructor() {
         const flatSettings: Record<string, Signal<number | boolean>> = {};
@@ -64,11 +76,14 @@ export class AppState {
         this.zoomFit = signal(true);
         this.zoomPercent = signal(100);
         this.effectPreviewMode = signal('enabled' as const);
+        this.renderVideoCodec = signal('avc');
+        this.renderVideoBitrate = signal(10);
+        this.renderJobs = signal([]);
         this.mediaBlob = signal(null);
 
         loadState(this);
 
-        const persistSettings = (settings: object) => {
+        const persistSettings = (settings: SavedState) => {
             localStorage.setItem('settings', JSON.stringify(settings));
         };
         const persistSettingsThrottled = throttle(persistSettings, 1000, true);
@@ -81,7 +96,9 @@ export class AppState {
                 resizeFilter: this.resizeFilter.value,
                 mute: this.mute.value,
                 volume: this.volume.value,
-                version: 1,
+                renderVideoCodec: this.renderVideoCodec.value,
+                renderVideoBitrate: this.renderVideoBitrate.value,
+                version: 1 as const,
             };
 
             persistSettingsThrottled(savedState);
@@ -114,6 +131,30 @@ export class AppState {
         }
         this.cleanupCallbacks.length = 0;
     }
+
+    addRenderJob(destination: FileSystemFileHandle, fileName: string | null) {
+        if (!this.mediaBlob.value || !this.renderVideoCodec.value) return;
+        const renderJob = new RenderJob(this.mediaBlob.value, fileName, destination, GLOBAL_WORKER_POOL, {
+            videoCodec: this.renderVideoCodec.value,
+            videoBitrate: this.renderVideoBitrate.value * 1000 * 1000,
+            effectSettings: {
+                resizeHeight: this.resizeEnabled.value ? this.resizeHeight.value : null,
+                resizeFilter: this.resizeFilter.value,
+                effectEnabled: true,
+                effectSettings: this.settingsAsObject.value,
+            },
+            stillImageDuration: 60,
+            stillImageFrameRate: 30,
+        });
+
+        const newRenderJobs = this.renderJobs.value.slice(0);
+        newRenderJobs.push(renderJob);
+        this.renderJobs.value = newRenderJobs;
+    }
+
+    removeRenderJob(removedJob: RenderJob) {
+        this.renderJobs.value = this.renderJobs.value.filter(job => job !== removedJob);
+    }
 }
 
 export const AppContext = createContext<AppState | undefined>(undefined);
@@ -139,6 +180,8 @@ type SavedState = {
     mute: boolean,
     volume: number,
     version: 1,
+    renderVideoCodec: AppVideoCodec | null,
+    renderVideoBitrate: number,
 };
 
 const loadState = (store: AppState) => {
@@ -164,6 +207,8 @@ const loadState = (store: AppState) => {
         store.resizeFilter.value = savedState.resizeFilter;
         store.mute.value = savedState.mute;
         store.volume.value = savedState.volume;
+        store.renderVideoCodec.value = savedState.renderVideoCodec;
+        store.renderVideoBitrate.value = savedState.renderVideoBitrate;
     } catch {
         // Swallow errors here
     }

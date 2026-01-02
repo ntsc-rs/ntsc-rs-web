@@ -12,7 +12,7 @@ import {useAddErrorToast} from '../Toast/Toast';
 import saveToFile from '../../util/save-to-file';
 import showOpenFilePicker from '../../util/file-picker';
 
-const SliderWithSpinBox = (
+export const SliderWithSpinBox = (
     {min, max, step, value, disabled}: {
         min: number,
         max: number,
@@ -210,7 +210,7 @@ const PresetsButtons = () => {
     const addErrorToast = useAddErrorToast();
 
     const copySettings = useCallback(() => {
-        navigator.clipboard.writeText(JSON.stringify(appState.settingsAsObject()))
+        navigator.clipboard.writeText(JSON.stringify(appState.settingsAsObject.value))
             .then(undefined, err => addErrorToast('Error copying preset', err));
     }, [appState]);
 
@@ -225,7 +225,7 @@ const PresetsButtons = () => {
     }, [appState]);
 
     const saveSettings = useCallback(() => {
-        const settingsStr = JSON.stringify(appState.settingsAsObject());
+        const settingsStr = JSON.stringify(appState.settingsAsObject.value);
         const settingsBlob = new Blob([new TextEncoder().encode(settingsStr)], {type: 'application/json'});
         saveToFile('preset.json', settingsBlob);
     }, [appState]);

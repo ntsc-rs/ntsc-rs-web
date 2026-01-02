@@ -89,3 +89,29 @@ a {
         text-decoration: underline;
     }
 }
+
+progress[value] {
+    appearance: none;
+    border-radius: 50rem;
+    height: 1rem;
+    border: 1px solid theme.$divider;
+    overflow: hidden;
+    background-color: theme.$base-color-tertiary;
+
+    &::-webkit-progress-bar {
+        background-color: theme.$base-color-tertiary;
+    }
+
+    &::-webkit-progress-value {
+        background-color: theme.$primary-light;
+        border-top-right-radius: 50rem;
+        border-bottom-right-radius: 50rem;
+    }
+
+    &::-moz-progress-bar {
+        background-color: theme.$primary-light;
+        border-radius: 0;
+        border-top-right-radius: 50rem;
+        border-bottom-right-radius: 50rem;
+    }
+}

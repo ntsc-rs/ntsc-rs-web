@@ -1,16 +1,13 @@
-import {WorkerSchema} from './effect-worker.worker';
+import {Formats, WorkerSchema} from './effect-worker.worker';
+import Queue from './queue';
 import RpcDispatcher from './worker-rpc';
 import {ResizeFilter} from 'ntsc-rs-web-wrapper';
 
 export type EffectWorker = RpcDispatcher<WorkerSchema>;
 
-type QueueNode = {
-    resolve: (worker: EffectWorker) => void,
-    next: QueueNode,
-} | null;
-
 const messageMap = {
-    'render-frame': 'rendered-frame',
+    'render-frame-to-bitmap': 'rendered-frame-to-bitmap',
+    'render-frame-to-videoframe': 'rendered-frame-to-videoframe',
     'init': 'initialized',
 } as const;
 type Runner<T> = (cb: (worker: EffectWorker) => Promise<T>) => Promise<T>;
@@ -26,13 +23,13 @@ export type RenderFrameSettings = {
     resizeFilter: ResizeFilter,
     effectEnabled: boolean,
     effectSettings: Record<string, number | boolean>,
+    padToEven: boolean,
     frameNum: number,
 };
 
 export default class EffectWorkerPool {
     private workers: EffectWorker[] = [];
-    private queueHead: QueueNode = null;
-    private queueTail: QueueNode = null;
+    private queue: Queue<(worker: EffectWorker) => void> = new Queue();
     private effectSettingsPerWorker = new WeakMap<EffectWorker, Record<string, number | boolean>>();
     allWorkers: EffectWorker[] = [];
 
@@ -69,13 +66,7 @@ export default class EffectWorkerPool {
      */
     getNextWorker<T>(): Promise<Runner<T>> {
         const p = new Promise((resolve: (worker: EffectWorker) => void) => {
-            const node = {resolve, next: null};
-            if (this.queueTail) {
-                this.queueTail.next = node;
-                this.queueTail = node;
-            } else {
-                this.queueHead = this.queueTail = node;
-            }
+            this.queue.pushBack(resolve);
         }).then(worker => {
             const runner = (cb: (worker: EffectWorker) => Promise<T>) => {
                 return cb(worker).finally(() => {
@@ -93,8 +84,11 @@ export default class EffectWorkerPool {
         return p;
     }
 
-    async processFrame(settings: RenderFrameSettings): Promise<() => Promise<ImageBitmap>> {
-        const runner = await this.getNextWorker<ImageBitmap>();
+    async processFrame<F extends keyof Formats>(
+        settings: RenderFrameSettings,
+        format: F,
+    ): Promise<() => Promise<Formats[F]>> {
+        const runner = await this.getNextWorker<Formats[F]>();
 
         // This is a two-step process. First, we send the frame to the worker to be processed immediately. However, the
         // "runner" callback intentionally does not finish until someone calls the function we return to access the
@@ -110,15 +104,25 @@ export default class EffectWorkerPool {
                 worker.sendAndForget('update-settings', JSON.stringify(settings.effectSettings));
                 this.effectSettingsPerWorker.set(worker, settings.effectSettings);
             }
-            const renderedFrame = await worker.send('render-frame', {
+            let renderName;
+            switch (format) {
+                case 'imagebitmap':
+                    renderName = 'render-frame-to-bitmap' as const;
+                    break;
+                case 'videoframe':
+                    renderName = 'render-frame-to-videoframe' as const;
+                    break;
+            }
+            const renderedFrame = await worker.send(renderName, {
                 frame: settings.frame,
                 resizeHeight: settings.resizeHeight,
                 resizeFilter: settings.resizeFilter,
                 effectEnabled: settings.effectEnabled,
                 frameNum: settings.frameNum,
+                padToEven: true,
             }, [settings.frame]);
             await waitForRelease;
-            return renderedFrame;
+            return renderedFrame as Formats[F];
         });
 
         return () => {
@@ -128,13 +132,10 @@ export default class EffectWorkerPool {
     }
 
     private doWork() {
-        if (!this.queueHead || this.workers.length === 0) return;
+        if (!this.queue.peekFront() || this.workers.length === 0) return;
         const nextWorker = this.workers.pop()!;
-        const queueHead = this.queueHead;
-        this.queueHead = queueHead.next;
-        if (!this.queueHead) this.queueTail = null;
-
-        queueHead.resolve(nextWorker);
+        const queueHead = this.queue.popFront()!;
+        queueHead(nextWorker);
     }
 
     destroy() {
@@ -143,3 +144,5 @@ export default class EffectWorkerPool {
         }
     }
 }
+
+export const GLOBAL_WORKER_POOL = EffectWorkerPool.create();
