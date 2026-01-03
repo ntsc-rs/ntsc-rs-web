@@ -96,7 +96,7 @@
 
 .progress-timestamp, .eta {
     font-size: 0.9rem;
-    margin: 0.25rem 0;
+    margin: 0.25rem 0 0 0;
 }
 
 .status-line {
@@ -107,4 +107,18 @@
 
 .status-line-text {
     flex: 1 1 0;
+}
+
+.download-render {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+
+    padding-top: 0.75rem;
+    margin-top: 0.5rem;
+    border-top: 1px solid theme.$divider;
+}
+
+.download-size {
+    font-size: 0.9rem;
 }

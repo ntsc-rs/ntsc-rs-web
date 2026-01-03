@@ -2,14 +2,18 @@ import style from './style.module.scss';
 
 import {AppVideoCodec, useAppState} from '../../app-state';
 import {Button, Dropdown} from '../Widgets/Widgets';
-import {batch, useSignal} from '@preact/signals';
+import {batch, useComputed, useSignal} from '@preact/signals';
 import {useCallback, useLayoutEffect} from 'preact/hooks';
 import {SliderWithSpinBox} from '../SettingsList/SettingsList';
-import RenderJob, {extensionForCodec, RenderJobState, supportedCodecsForVideo} from '../../util/render-job';
+import {extensionForCodec, RenderJobState, supportedCodecsForVideo} from '../../util/render-job';
 import {formatTimestamp, formatTimestampHuman} from '../../util/format-timestamp';
 import Icon, {IconButton} from '../Icon/Icon';
 import {Motif} from '../../util/motif';
 import classNames from 'clsx';
+import {RenderJobLike} from '../../util/opfs-render-jobs';
+import {useAddErrorToast} from '../Toast/Toast';
+import saveToFile from '../../util/save-to-file';
+import formatFileSize from '../../util/format-file-size';
 
 type PaneState =
     | {state: 'loading'}
@@ -21,7 +25,12 @@ type PaneState =
 
 const hasDirectFSSupport = 'showSaveFilePicker' in window;
 
-const RenderJobComponent = ({job, onRemove}: {job: RenderJob, onRemove: (job: RenderJob) => void}) => {
+const ntscified = (sourceFileName: string, videoCodec: AppVideoCodec) => {
+    const fileStub = sourceFileName.replace(/\..+/, '') + '_ntsc';
+    return `${fileStub}.${extensionForCodec(videoCodec)}`;
+};
+
+const RenderJobComponent = ({job, onRemove}: {job: RenderJobLike, onRemove: (job: RenderJobLike) => void}) => {
     const progress = useSignal({loaded: 0, total: 0});
     const eta = useSignal<number | null>(null);
     const state = useSignal<RenderJobState>(job.state);
@@ -52,11 +61,14 @@ const RenderJobComponent = ({job, onRemove}: {job: RenderJob, onRemove: (job: Re
         onRemove(job);
     }, [job]);
 
+    const downloadRender = useCallback(() => {
+        if (job.state.state !== 'completed' || !job.state.file) return;
+        saveToFile(ntscified(job.sourceFileName, job.videoCodec), job.state.file);
+    }, [job]);
+
     let renderJobStatus;
     switch (state.value.state) {
         case 'waiting':
-            renderJobStatus = 'Starting...';
-            break;
         case 'rendering':
             renderJobStatus = <>
                 <progress value={progress.value.loaded} max={progress.value.total} />
@@ -64,17 +76,28 @@ const RenderJobComponent = ({job, onRemove}: {job: RenderJob, onRemove: (job: Re
                     {formatTimestamp(progress.value.loaded)} / {formatTimestamp(progress.value.total)}
                 </div>
                 <div className={classNames(style.eta, 'tabular-nums')}>
-                    {eta.value ? `${formatTimestampHuman(eta.value)} remaining` : 'Calculating ETA'}
+                    {state.value.state === 'waiting' ?
+                        'Starting...' :
+                        eta.value ?
+                            `${formatTimestampHuman(eta.value)} remaining` :
+                            'Calculating ETA'}
                 </div>
             </>;
             break;
         case 'completed':
-            renderJobStatus = <div className={style.statusLine}>
-                <Icon type='check' motif={Motif.SUCCESS} title='' />
-                <div className={classNames(style.statusLineText, 'tabular-nums')}>
-                    Completed in {formatTimestamp(state.value.time - job.startTime)}
+            renderJobStatus = <>
+                <div className={style.statusLine}>
+                    <Icon type='check' motif={Motif.SUCCESS} title='' />
+                    <div className={classNames(style.statusLineText, 'tabular-nums')}>
+                        Completed in {formatTimestamp(state.value.time - job.startTime)}
+                    </div>
                 </div>
-            </div>;
+                {job.isOPFS && <div className={style.downloadRender}>
+                    <Button onClick={downloadRender}><Icon type="download" title="" />Download</Button>
+                    {state.value.file?.size &&
+                        <div className={style.downloadSize}>{formatFileSize(state.value.file?.size)}</div>}
+                </div>}
+            </>;
             break;
         case 'cancelled':
             renderJobStatus = <div className={style.statusLine}>
@@ -100,7 +123,9 @@ const RenderJobComponent = ({job, onRemove}: {job: RenderJob, onRemove: (job: Re
     return (
         <div className={style.renderJob}>
             <div className={style.renderJobHeader}>
-                {<header className={style.renderJobName}>{job.fileName}</header>}
+                <header className={style.renderJobName}>
+                    {job.isOPFS ? job.sourceFileName : job.destination.name}
+                </header>
                 {
                     state.value.state === 'rendering' || state.value.state === 'waiting' ?
                         <IconButton type='cancel' title='Cancel' onClick={cancel} /> :
@@ -114,20 +139,30 @@ const RenderJobComponent = ({job, onRemove}: {job: RenderJob, onRemove: (job: Re
 
 const RenderJobList = () => {
     const appState = useAppState();
+    const addErrorToast = useAddErrorToast();
 
-    const removeJob = useCallback((job: RenderJob) => {
-        appState.removeRenderJob(job);
+    const removeJob = useCallback((job: RenderJobLike) => {
+        appState.removeRenderJob(job).then(() => {}, err => addErrorToast('Error removing render job', err));
     }, [appState]);
+    const jobs = useComputed(() => {
+        switch (appState.renderJobs.value.state) {
+            case 'loading': return null;
+            case 'error': return String(appState.renderJobs.value.error);
+            case 'loaded': return appState.renderJobs.value.jobs.value
+                .map(job => <RenderJobComponent job={job} onRemove={removeJob} />);
+        }
+    });
 
     return (
         <div className={style.renderJobs}>
-            {appState.renderJobs.value.map(job => <RenderJobComponent job={job} onRemove={removeJob} />)}
+            {jobs}
         </div>
     );
 };
 
 const RenderSettingsPane = () => {
     const appState = useAppState();
+    const addErrorToast = useAddErrorToast();
 
     const paneState = useSignal<PaneState>({state: 'loading'});
     useLayoutEffect(() => {
@@ -159,21 +194,24 @@ const RenderSettingsPane = () => {
     }
 
     const renderDirectlyToFile = useCallback(() => {
-        let fileStub = 'output';
-        if (appState.mediaBlob.value) {
-            const fileName = appState.mediaBlob.value.name;
-            fileStub = fileName.replace(/\..+/, '') + '_ntsc';
-        }
-        if (!appState.renderVideoCodec.value) return;
+        const mediaBlob = appState.mediaBlob.value;
+        if (!appState.renderVideoCodec.value || !mediaBlob) return;
         window.showSaveFilePicker({
-            suggestedName: `${fileStub}.${extensionForCodec(appState.renderVideoCodec.value)}`,
+            suggestedName: ntscified(mediaBlob.name, appState.renderVideoCodec.value),
             startIn: 'videos',
             id: 'save-video',
         }).then(handle => {
-            appState.addRenderJob(handle, handle.name);
+            appState.addRenderJob(handle, mediaBlob, false);
         }, () => {
             // This is an AbortError; the user just closed the dialog
         });
+    }, [appState]);
+
+    const renderToOPFS = useCallback(() => {
+        const mediaBlob = appState.mediaBlob.value;
+        if (!appState.renderVideoCodec.value || !mediaBlob) return;
+
+        appState.addOPFSRenderJob(mediaBlob).catch(err => addErrorToast('Error creating render job', err));
     }, [appState]);
 
     const hasMedia = appState.mediaBlob.value;
@@ -208,7 +246,7 @@ const RenderSettingsPane = () => {
                         }
                         onClick={renderDirectlyToFile}
                     >Render to file...</Button>
-                    <Button disabled={!hasMedia}>Render</Button>
+                    <Button disabled={!hasMedia} onClick={renderToOPFS}>Render</Button>
                 </div>
             </div>
             <RenderJobList />

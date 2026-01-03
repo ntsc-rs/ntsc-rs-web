@@ -2,7 +2,7 @@ import style from './style.module.scss';
 import slider from './slider.module.scss';
 
 import type {ButtonHTMLAttributes, ComponentChildren, InputHTMLAttributes, JSX, Ref, TargetedEvent} from 'preact';
-import {useCallback, useEffect, useId, useLayoutEffect, useRef} from 'preact/hooks';
+import {useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef} from 'preact/hooks';
 import {useSignal, type Signal} from '@preact/signals';
 import classNames from 'clsx';
 import Icon, {IconType} from '../Icon/Icon';
@@ -210,11 +210,12 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
     );
 };
 
-export const Slider = ({value, min, max, step = 1, disabled, className}: {
+export const Slider = ({value, min, max, step = 1, detents, disabled, className}: {
     value: Signal<number>;
     min: number;
     max: number;
     step?: number | 'any';
+    detents?: number[];
     disabled?: boolean;
     className?: string;
 }): JSX.Element => {
@@ -229,17 +230,21 @@ export const Slider = ({value, min, max, step = 1, disabled, className}: {
         min={min}
         max={max}
         step={step}
+        detents={detents}
         disabled={disabled}
         className={className}
     />;
 };
 
-export const ImperativeSlider = ({value, onInput, min, max, step = 1, disabled, className}: {
+const EMPTY_ARRAY: never[] = [];
+
+export const ImperativeSlider = ({value, onInput, min, max, step = 1, detents, disabled, className}: {
     value: number;
     onInput?: (event: TargetedEvent<HTMLInputElement, InputEvent>) => unknown;
     min: number;
     max: number;
     step?: number | 'any';
+    detents?: number[];
     disabled?: boolean;
     className?: string;
 }): JSX.Element => {
@@ -250,6 +255,18 @@ export const ImperativeSlider = ({value, onInput, min, max, step = 1, disabled, 
         event.currentTarget.style.setProperty('--val', event.currentTarget.value);
         onInput?.(event);
     }, [onInput]);
+    // If the detents array has the same contents as a previous one, use the previous one to maintain object identity
+    const memoDetents = useMemo(() => detents, detents ?? EMPTY_ARRAY);
+    const dlId = useId();
+
+    const dataList = useMemo(() => {
+        if (!memoDetents || memoDetents.length === 0) return null;
+        return (
+            <datalist id={dlId}>
+                {memoDetents.map(value => <option value={value} />)}
+            </datalist>
+        );
+    }, [dlId, memoDetents]);
 
     useLayoutEffect(() => {
         const slider = sliderInput.current!;
@@ -269,7 +286,8 @@ export const ImperativeSlider = ({value, onInput, min, max, step = 1, disabled, 
             disabled={disabled}
             onInput={handleInput}
             ref={sliderInput}
-        />
+            list={memoDetents?.length ? dlId : undefined}
+        >{dataList}</input>
     );
 };
 

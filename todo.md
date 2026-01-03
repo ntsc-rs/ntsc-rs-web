@@ -7,8 +7,16 @@
 - [ ] OPFS-based preset manager?
 - [x] Video padding filter
 - [ ] FFV1 via WASM?
-- [ ] OPFS output (render jobs output to OPFS and have a "Save" button)
-  - [ ] Retain list of render jobs still in OPFS
+- [x] OPFS output (render jobs output to OPFS and have a "Save" button)
+  - [x] Retain list of render jobs still in OPFS
 - [ ] Notify on render completion
 - [ ] Resizable panel widget from Glypht
 - [ ] Portrait mode
+- [ ] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
+- [ ] Document limitations
+  - No interlaced video
+  - No lossless video
+  - Chroma subsampling always enabled
+  - Slower than native effect rendering
+  - Slower encoding on Firefox and maybe Safari
+  - Must stay "tabbed in" on mobile to avoid the tab being suspended

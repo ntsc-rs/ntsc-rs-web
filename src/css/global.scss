@@ -30,6 +30,7 @@ body {
 body, button, input, select {
     font-family: $font;
     font-feature-settings: 'ss07', 'ss08', 'cv10';
+    line-height: 1.75rem;
 }
 
 @mixin tabular-nums {
@@ -40,8 +41,8 @@ body, button, input, select {
     @include tabular-nums();
 }
 
-$textbox-padding-x: 0.675rem;
-$textbox-padding-y: 0.5rem;
+$textbox-padding-x: 0.5rem;
+$textbox-padding-y: 0;
 
 
 @mixin textbox {

@@ -250,6 +250,7 @@ const VideoControls = ({player}: {player: MediaPlayer | null}) => {
                     max={125}
                     step={1}
                     disabled={player === null || !player.hasAudio}
+                    detents={[100]}
                 />
                 <SpinBox
                     value={volume}

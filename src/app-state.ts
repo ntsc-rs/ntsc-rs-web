@@ -12,12 +12,18 @@ import init, {
 import throttle from './util/throttle';
 import RenderJob from './util/render-job';
 import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
+import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 await init();
 //await initThreadPool(8);
 
 export type EffectPreviewMode = 'enabled' | 'disabled';
 
 export type AppVideoCodec = 'avc' | 'vp8' | 'vp9' | 'av1';
+
+export type RenderJobListState =
+    | {state: 'loading'}
+    | {state: 'loaded', jobs: Signal<RenderJobLike[]>}
+    | {state: 'error', error: unknown};
 
 export class AppState {
     settings: Record<string, Signal<number | boolean>>;
@@ -37,9 +43,10 @@ export class AppState {
     renderVideoCodec: Signal<AppVideoCodec | null>;
     renderVideoBitrate: Signal<number>;
 
-    renderJobs: Signal<RenderJob[]>;
+    renderJobs: Signal<RenderJobListState>;
     mediaBlob: Signal<File | null>;
     private cleanupCallbacks: (() => unknown)[] = [];
+    private opfsRenderJobManager = new OpfsRenderJobManager();
 
     constructor() {
         const flatSettings: Record<string, Signal<number | boolean>> = {};
@@ -78,7 +85,7 @@ export class AppState {
         this.effectPreviewMode = signal('enabled' as const);
         this.renderVideoCodec = signal('avc');
         this.renderVideoBitrate = signal(10);
-        this.renderJobs = signal([]);
+        this.renderJobs = signal({state: 'loading'});
         this.mediaBlob = signal(null);
 
         loadState(this);
@@ -103,6 +110,15 @@ export class AppState {
 
             persistSettingsThrottled(savedState);
         }));
+
+        this.opfsRenderJobManager.initAndDoCleanup().then(
+            renderJobs => {
+                this.renderJobs.value = {state: 'loaded', jobs: signal(renderJobs)};
+            },
+            error => {
+                this.renderJobs.value = {state: 'error', error};
+            },
+        );
     }
 
     settingsFromObject(settingsObj: Record<string, number | boolean>) {
@@ -132,28 +148,47 @@ export class AppState {
         this.cleanupCallbacks.length = 0;
     }
 
-    addRenderJob(destination: FileSystemFileHandle, fileName: string | null) {
-        if (!this.mediaBlob.value || !this.renderVideoCodec.value) return;
-        const renderJob = new RenderJob(this.mediaBlob.value, fileName, destination, GLOBAL_WORKER_POOL, {
-            videoCodec: this.renderVideoCodec.value,
-            videoBitrate: this.renderVideoBitrate.value * 1000 * 1000,
-            effectSettings: {
-                resizeHeight: this.resizeEnabled.value ? this.resizeHeight.value : null,
-                resizeFilter: this.resizeFilter.value,
-                effectEnabled: true,
-                effectSettings: this.settingsAsObject.value,
+    addRenderJob(
+        destination: FileSystemFileHandle,
+        mediaBlob: File,
+        isOPFS: boolean,
+    ) {
+        if (!this.renderVideoCodec.value || this.renderJobs.value.state !== 'loaded') return;
+        const renderJob = new RenderJob(
+            mediaBlob,
+            mediaBlob.name,
+            destination,
+            GLOBAL_WORKER_POOL,
+            {
+                videoCodec: this.renderVideoCodec.value,
+                videoBitrate: this.renderVideoBitrate.value * 1000 * 1000,
+                effectSettings: {
+                    resizeHeight: this.resizeEnabled.value ? this.resizeHeight.value : null,
+                    resizeFilter: this.resizeFilter.value,
+                    effectEnabled: true,
+                    effectSettings: this.settingsAsObject.value,
+                },
+                stillImageDuration: 60,
+                stillImageFrameRate: 30,
             },
-            stillImageDuration: 60,
-            stillImageFrameRate: 30,
-        });
+            isOPFS,
+        );
 
-        const newRenderJobs = this.renderJobs.value.slice(0);
+        const newRenderJobs = this.renderJobs.value.jobs.value.slice(0);
         newRenderJobs.push(renderJob);
-        this.renderJobs.value = newRenderJobs;
+        this.renderJobs.value.jobs.value = newRenderJobs;
     }
 
-    removeRenderJob(removedJob: RenderJob) {
-        this.renderJobs.value = this.renderJobs.value.filter(job => job !== removedJob);
+    async addOPFSRenderJob(mediaBlob: File) {
+        if (!this.renderVideoCodec.value) return;
+        const destinationFile = await this.opfsRenderJobManager.newRenderFile(this.renderVideoCodec.value);
+        this.addRenderJob(destinationFile, mediaBlob, true);
+    }
+
+    async removeRenderJob(removedJob: RenderJobLike) {
+        if (this.renderJobs.value.state !== 'loaded') return;
+        this.renderJobs.value.jobs.value = this.renderJobs.value.jobs.value.filter(job => job !== removedJob);
+        await this.opfsRenderJobManager.removeRenderJob(removedJob);
     }
 }
 

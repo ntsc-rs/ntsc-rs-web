@@ -52,6 +52,11 @@ $thumb-d: 16px;
     margin: 0;
     padding: 0;
     width: $track-w; height: $thumb-d;
+    height: 1rem;
+    // Blink's slider CSS sets the min-height of an untargetable <div> if the slider has a <datalist>, so we need to
+    // ensure it's centered in that case
+    display: flex;
+    align-items: center;
     background: transparent;
 
     &::-webkit-slider-runnable-track {

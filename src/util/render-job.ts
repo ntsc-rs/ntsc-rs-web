@@ -6,7 +6,6 @@ import {
     Mp4OutputFormat,
     Output,
     StreamTarget,
-    VideoCodec,
     VideoSample,
     VideoSampleSource,
     WebMOutputFormat,
@@ -22,7 +21,7 @@ import {AppVideoCodec} from '../app-state';
 import {WrappedInput} from './still-image-media';
 
 export type RenderJobSettings = {
-    videoCodec: VideoCodec,
+    videoCodec: AppVideoCodec,
     videoBitrate: number,
     effectSettings: PipelineSettings,
     stillImageFrameRate: number,
@@ -41,7 +40,8 @@ export const extensionForCodec = (codec: AppVideoCodec) => {
 export type RenderJobState =
     | {state: 'waiting'}
     | {state: 'rendering'}
-    | {state: 'completed', time: number}
+    // The file is present for OPFS render jobs, since those require the output file to be saved by the user
+    | {state: 'completed', time: number, file: File | null}
     | {state: 'cancelled', reason: unknown}
     | {state: 'error', error: unknown};
 
@@ -62,9 +62,11 @@ export const supportedCodecsForAudio = getEncodableAudioCodecs(['mp3', 'aac', 'o
 export default class RenderJob extends TypedEventTarget<ProgressEvent | StateChangeEvent | ErrorEvent> {
     private _state: RenderJobState = {state: 'waiting'};
     private _completionPromise: Promise<void>;
-    private _destination: FileSystemFileHandle;
     private _startTime: number = Date.now();
-    readonly fileName: string | null;
+    readonly sourceFileName: string;
+    readonly videoCodec: AppVideoCodec;
+    readonly destination: FileSystemFileHandle;
+    readonly isOPFS: boolean;
 
     private etaInfo: {
         progress: number;
@@ -81,14 +83,17 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
 
     constructor(
         source: Blob,
-        fileName: string | null,
+        sourceFileName: string,
         destination: FileSystemFileHandle,
         workerPool: Promise<EffectWorkerPool>,
         settings: RenderJobSettings,
+        isOPFS: boolean,
     ) {
         super();
-        this._destination = destination;
-        this.fileName = fileName;
+        this.destination = destination;
+        this.sourceFileName = sourceFileName;
+        this.isOPFS = isOPFS;
+        this.videoCodec = settings.videoCodec;
         const inputPromise = WrappedInput.create(source, {
             stillImageFrameRate: settings.stillImageFrameRate,
             stillImageDuration: settings.stillImageDuration,
@@ -339,7 +344,8 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
             await output.finalize();
             if (signal.aborted) return;
             input.close();
-            this.changeState({state: 'completed', time: Date.now() / 1000});
+            const file = isOPFS ? await destination.getFile() : null;
+            this.changeState({state: 'completed', time: Date.now() / 1000, file});
         };
 
         this._completionPromise = (async() => {
@@ -412,10 +418,6 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
 
     get completionPromise() {
         return this._completionPromise;
-    }
-
-    get destination() {
-        return this._destination;
     }
 
     get startTime() {
