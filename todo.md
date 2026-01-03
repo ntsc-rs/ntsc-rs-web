@@ -10,9 +10,11 @@
 - [x] OPFS output (render jobs output to OPFS and have a "Save" button)
   - [x] Retain list of render jobs still in OPFS
 - [ ] Notify on render completion
-- [ ] Resizable panel widget from Glypht
+- [x] Resizable panel widget from Glypht
 - [ ] Portrait mode
 - [ ] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
+- [ ] Split-screen preview mode
+- [ ] Polyfill AAC encoder for Chrome (and apparently other browsers too)
 - [ ] Document limitations
   - No interlaced video
   - No lossless video
@@ -20,3 +22,5 @@
   - Slower than native effect rendering
   - Slower encoding on Firefox and maybe Safari
   - Must stay "tabbed in" on mobile to avoid the tab being suspended
+- [ ] License list
+- [ ] Documentation

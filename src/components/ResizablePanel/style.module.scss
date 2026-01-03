@@ -1,0 +1,117 @@
+@use '../../css/theme.scss';
+
+.resizable-panel {
+    position: relative;
+}
+
+.splitter {
+    overflow: visible;
+    position: absolute;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: none;
+
+    &:hover {
+        border-color: theme.$interactive-muted;
+    }
+}
+
+.vertical .splitter {
+    left: 0;
+    right: 0;
+    height: var(--splitter-size);
+    cursor: ns-resize;
+}
+
+.horizontal .splitter {
+    top: 0;
+    bottom: 0;
+    width: var(--splitter-size);
+    cursor: ew-resize;
+}
+
+.topEdge .splitter {
+    top: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+}
+
+.bottomEdge .splitter {
+    bottom: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+}
+
+.leftEdge .splitter {
+    left: 0;
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
+}
+
+.rightEdge .splitter {
+    right: 0;
+    border-left: none;
+    border-top: none;
+    border-bottom: none;
+}
+
+:root {
+    --splitter-size: 0.5rem;
+}
+
+@media (pointer: coarse) {
+    :root {
+        --splitter-size: 1rem;
+    }
+}
+
+@media (hover: none) {
+    .splitter {
+        background-color: theme.$base-color-tertiary;
+        border: none;
+
+        &::after {
+            content: '';
+            background-color: theme.$divider;
+            border-radius: var(--splitter-size);
+            display: flex;
+            align-self: center;
+        }
+    }
+
+    .horizontal .splitter {
+        &::after {
+            width: 2px;
+            height: 50%;
+        }
+    }
+
+    .vertical .splitter {
+        &::after {
+            height: 2px;
+            width: 50%;
+        }
+    }
+
+    .leftEdge .splitter {
+        transform: translateX(calc(var(--splitter-size) / -2));
+    }
+
+    .rightEdge .splitter {
+        transform: translateX(calc(var(--splitter-size) / 2));
+    }
+
+    .topEdge .splitter {
+        transform: translateY(calc(var(--splitter-size) / -2));
+    }
+
+    .bottomEdge .splitter {
+        transform: translateY(calc(var(--splitter-size) / 2));
+    }
+}

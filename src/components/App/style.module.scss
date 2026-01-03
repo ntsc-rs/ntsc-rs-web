@@ -7,11 +7,20 @@
     overflow: auto;
 }
 
-.settings-sidebar {
-    flex: 0 0 40rem;
+@media (orientation: portrait) {
+    .app {
+        flex-direction: column-reverse;
+    }
+}
+
+.side-panel {
     background-color: theme.$base-color-secondary;
     overflow: auto;
     display: flex;
+}
+
+.settings-sidebar {
+    flex: 1 1 0;
 }
 
 .display-pane {

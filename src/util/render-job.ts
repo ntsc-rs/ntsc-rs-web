@@ -121,7 +121,7 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
             }
 
             const writable = await destination.createWritable();
-            const target = new StreamTarget(writable);
+            const target = new StreamTarget(writable, {chunked: true});
             const output = new Output({
                 format: outputFormat,
                 target,
@@ -159,15 +159,6 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
                         }
                         break;
                 };
-                if (!sourceSettings) {
-                    this.abortController.abort();
-                    throw new DOMException(
-                        'This browser doesn\'t support any audio codecs for the requested output format.\n' +
-                        'Try a different format.',
-
-                        'NotSupportedError',
-                    );
-                }
             }
 
             for (const audioTrack of input.audioTracks) {
@@ -196,8 +187,16 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
                         }
                     });
                 } else {
-                    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-                    audioSource = new AudioSampleSource(sourceSettings!);
+                    if (!sourceSettings) {
+                        this.abortController.abort();
+                        throw new DOMException(
+                            'This browser doesn\'t support any audio codecs for the requested output format.\n' +
+                            'Try a different format.',
+
+                            'NotSupportedError',
+                        );
+                    }
+                    audioSource = new AudioSampleSource(sourceSettings);
                     audioEncoders.push(async() => {
                         const audioSink = new AudioSampleSink(audioTrack);
                         for await (const sample of audioSink.samples()) {
