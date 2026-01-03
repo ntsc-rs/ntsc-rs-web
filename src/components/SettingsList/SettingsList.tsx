@@ -2,7 +2,7 @@ import style from './style.module.scss';
 
 import {Signal} from '@preact/signals';
 import {DescriptorKind, SettingDescriptor} from 'ntsc-rs-web-wrapper';
-import {useCallback} from 'preact/hooks';
+import {useCallback, useId} from 'preact/hooks';
 import {SETTINGS_DESCRIPTORS, SETTINGS_LIST, useAppState} from '../../app-state';
 import {CheckboxToggle, Dropdown, Slider, SpinBox} from '../Widgets/Widgets';
 import classNames from 'clsx';
@@ -13,18 +13,19 @@ import saveToFile from '../../util/save-to-file';
 import showOpenFilePicker from '../../util/file-picker';
 
 export const SliderWithSpinBox = (
-    {min, max, step, value, disabled}: {
+    {min, max, step, value, disabled, 'aria-labelledby': labelledBy}: {
         min: number,
         max: number,
         step?: number | 'any',
         value: Signal<number>,
         disabled?: boolean,
+        'aria-labelledby'?: string,
     },
 ) => {
     return (
         <div className={style.sliderWithSpinbox}>
-            <Slider min={min} max={max} step={step} value={value} disabled={disabled} />
-            <SpinBox min={min} max={max} step={step} value={value} disabled={disabled} />
+            <Slider min={min} max={max} step={step} value={value} disabled={disabled} aria-labelledby={labelledBy} />
+            <SpinBox min={min} max={max} step={step} value={value} disabled={disabled} aria-labelledby={labelledBy} />
         </div>
     );
 };
@@ -100,6 +101,8 @@ const Setting = (
         settingsMap: Record<string, Signal<number | boolean>>,
         disabled: boolean,
     }) => {
+    const labelId = useId();
+
     let innerWidget;
     switch (descriptor.kind) {
         case DescriptorKind.Enumeration: {
@@ -107,6 +110,7 @@ const Setting = (
                 value={value as Signal<number>}
                 options={descriptor.value.options.map(item => ({id: item.index, name: item.label}))}
                 disabled={disabled}
+                aria-labelledby={labelId}
             />;
             break;
         }
@@ -117,6 +121,7 @@ const Setting = (
                 max={1}
                 step={0.001}
                 disabled={disabled}
+                aria-labelledby={labelId}
             />;
             break;
         }
@@ -127,6 +132,7 @@ const Setting = (
                 max={descriptor.value.max}
                 step={1}
                 disabled={disabled}
+                aria-labelledby={labelId}
             />;
             break;
         }
@@ -137,6 +143,7 @@ const Setting = (
                 max={descriptor.value.max}
                 step={0.001}
                 disabled={disabled}
+                aria-labelledby={labelId}
             />;
             break;
         }
@@ -167,7 +174,7 @@ const Setting = (
             {innerWidget}
             {descriptor.kind === DescriptorKind.Boolean || descriptor.kind === DescriptorKind.Group ?
                 null :
-                <div className={style.settingLabel}>{descriptor.label}</div>}
+                <label className={style.settingLabel} id={labelId}>{descriptor.label}</label>}
         </div>
     );
 };

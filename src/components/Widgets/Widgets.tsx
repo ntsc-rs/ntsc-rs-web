@@ -8,7 +8,14 @@ import classNames from 'clsx';
 import Icon, {IconType} from '../Icon/Icon';
 import {Motif} from '../../util/motif';
 
-export const Dropdown = <T extends string | number>({value, options, className, disabled}: {
+export const Dropdown = <T extends string | number>({
+    value,
+    options,
+    className,
+    disabled,
+    inputId,
+    'aria-labelledby': labelledBy,
+}: {
     value: Signal<T | null>;
     options: readonly {
         id: T;
@@ -16,6 +23,8 @@ export const Dropdown = <T extends string | number>({value, options, className, 
     }[];
     className?: string;
     disabled?: boolean;
+    inputId?: string;
+    'aria-labelledby'?: string;
 }): JSX.Element => {
     const handleChange = useCallback((event: Event) => {
         const select = event.target as HTMLSelectElement;
@@ -26,7 +35,13 @@ export const Dropdown = <T extends string | number>({value, options, className, 
 
     return (
         <div className={classNames(style.selectWrapper, className, disabled && style.disabled)}>
-            <select className={style.select} onChange={handleChange} disabled={disabled}>
+            <select
+                className={style.select}
+                onChange={handleChange}
+                disabled={disabled}
+                id={inputId}
+                aria-labelledby={labelledBy}
+            >
                 {options.map(({id, name}) => (
                     <option value={id} key={id} selected={id === value.value}>{name}</option>
                 ))}
@@ -35,7 +50,17 @@ export const Dropdown = <T extends string | number>({value, options, className, 
     );
 };
 
-export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, className}: {
+export const SpinBox = ({
+    value,
+    min,
+    max,
+    step = 1,
+    smartAim = 0,
+    disabled,
+    className,
+    inputId,
+    'aria-labelledby': labelledBy,
+}: {
     value: Signal<number>;
     min: number;
     max: number;
@@ -43,16 +68,13 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
     smartAim?: number;
     disabled?: boolean;
     className?: string;
+    inputId?: string;
+    'aria-labelledby'?: string;
 }): JSX.Element => {
     const handleInput = useCallback((event: Event) => {
         const newValue = Number((event.target as HTMLInputElement).value);
         value.value = newValue;
     }, [value]);
-
-    const handleDrag = useCallback((event: Event) => {
-        if (disabled) return;
-        event.preventDefault();
-    }, [disabled]);
 
     const increment = useCallback(() => {
         value.value = Math.min(value.value + (step === 'any' ? 1 : step), max);
@@ -80,40 +102,41 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
     }, []);
 
     // Drag up/down to change the value
-    const deadZone = useRef({bottom: 0, top: 0, left: 0, right: 0});
-    const valueStart = useRef(0);
-    const isDragging = useRef(false);
     const handlePointerDown = useCallback((event: TargetedEvent<HTMLInputElement, PointerEvent>) => {
+        // For the first drag, focus the input element and prevent selecting text until subsequent pointer events
+        if (document.activeElement !== event.currentTarget) {
+            event.preventDefault();
+            event.currentTarget.focus();
+        }
         if (disabled) return;
         // Don't count up/down drags if the cursor is inside the spinbox
         const target = event.currentTarget;
         const rect = target.getBoundingClientRect();
-        deadZone.current = rect;
-        valueStart.current = value.value;
+        const deadZone = rect;
+        const valueStart = value.value;
 
         const onMove = (event: PointerEvent) => {
             let mouseDelta = 0;
-            if (event.clientY < deadZone.current.top) {
-                mouseDelta += event.clientY - deadZone.current.top;
-            } else if (event.clientY > deadZone.current.bottom) {
-                mouseDelta += event.clientY - deadZone.current.bottom;
+            if (event.clientY < deadZone.top) {
+                mouseDelta += event.clientY - deadZone.top;
+            } else if (event.clientY > deadZone.bottom) {
+                mouseDelta += event.clientY - deadZone.bottom;
             }
 
-            if (event.clientX < deadZone.current.left) {
-                mouseDelta -= event.clientX - deadZone.current.left;
-            } else if (event.clientX > deadZone.current.right) {
-                mouseDelta -= event.clientX - deadZone.current.right;
+            if (event.clientX < deadZone.left) {
+                mouseDelta -= event.clientX - deadZone.left;
+            } else if (event.clientX > deadZone.right) {
+                mouseDelta -= event.clientX - deadZone.right;
             }
 
-            isDragging.current = mouseDelta !== 0;
-            if (!isDragging.current) return;
+            if (mouseDelta === 0) return;
 
             document.getSelection()?.empty();
 
             // 200px (in either direction; it's the "radius", not "diameter") for the slider to go from min to max
             const valueDelta = mouseDelta * (max - min) / 200;
 
-            const newValue = valueStart.current - valueDelta;
+            const newValue = valueStart - valueDelta;
             const clampedValue = Math.max(min, Math.min(newValue, max));
             let roundedValue = step === 'any' ? clampedValue : Math.round(clampedValue / step) * step;
             if (smartAim > 0) {
@@ -144,11 +167,6 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
         // Ensure the value is clamped to min/max when editing ends
         value.value = Math.max(min, Math.min(value.value, max));
     }, [isEditing, value, min, max]);
-    const onCreateInput = useCallback((elem: HTMLInputElement | null) => {
-        elem?.focus();
-    }, []);
-
-    const valueText = Number(value.value.toFixed(12)).toString();
 
     return (
         <div className={classNames(
@@ -156,8 +174,13 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
             className,
             disabled && style.disabled,
         )} aria-disabled={disabled}>
-            {isEditing.value ? <input
-                className={classNames(style.spinboxField, 'tabular-nums')}
+            <input
+                className={classNames(
+                    style.spinboxField,
+                    !isEditing.value && style.spinboxIdle,
+                    'tabular-nums',
+                    disabled && style.disabled,
+                )}
                 type="number"
                 min={min}
                 max={max}
@@ -165,31 +188,19 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
                 value={Number(value.value.toFixed(12))}
                 disabled={disabled}
                 onInput={handleInput}
-                id={spinboxId}
+                id={inputId ?? spinboxId}
+                onFocus={handleFocus}
                 onBlur={handleBlur}
-                ref={onCreateInput}
-            /> :
-                <div
-                    className={classNames(style.spinboxDisplay, 'tabular-nums', disabled && style.disabled)}
-                    onInput={handleInput}
-                    onDragCapture={handleDrag}
-                    id={spinboxId}
-                    onPointerDown={handlePointerDown}
-                    tabIndex={0}
-                    onFocus={handleFocus}
-                    aria-valuemin={min}
-                    aria-valuemax={max}
-                    aria-valuenow={value.value}
-                    aria-valuetext={valueText}
-                    role='spinbutton'
-                >{valueText}</div>}
+                onPointerDown={handlePointerDown}
+                aria-labelledby={labelledBy}
+            />
             <div className={style.spinboxButtons}>
                 <button
                     onClick={increment}
                     disabled={disabled || (value.value === max)}
                     className={style.spinboxButton}
                     role="button"
-                    aria-controls={spinboxId}
+                    aria-controls={inputId ?? spinboxId}
                     aria-label="Increment"
                 >
                     <div className={style.spinboxUp} />
@@ -200,7 +211,7 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
                     disabled={disabled || (value.value === min)}
                     className={style.spinboxButton}
                     role="button"
-                    aria-controls={spinboxId}
+                    aria-controls={inputId ?? spinboxId}
                     aria-label="Decrement"
                 >
                     <div className={style.spinboxDown} />
@@ -210,7 +221,17 @@ export const SpinBox = ({value, min, max, step = 1, smartAim = 0, disabled, clas
     );
 };
 
-export const Slider = ({value, min, max, step = 1, detents, disabled, className}: {
+export const Slider = ({
+    value,
+    min,
+    max,
+    step = 1,
+    detents,
+    disabled,
+    className,
+    id,
+    'aria-labelledby': labelledBy,
+}: {
     value: Signal<number>;
     min: number;
     max: number;
@@ -218,6 +239,8 @@ export const Slider = ({value, min, max, step = 1, detents, disabled, className}
     detents?: number[];
     disabled?: boolean;
     className?: string;
+    id?: string;
+    'aria-labelledby'?: string,
 }): JSX.Element => {
     const handleInput = useCallback((event: TargetedEvent<HTMLInputElement, InputEvent>) => {
         const newValue = Number(event.currentTarget.value);
@@ -233,12 +256,25 @@ export const Slider = ({value, min, max, step = 1, detents, disabled, className}
         detents={detents}
         disabled={disabled}
         className={className}
+        id={id}
+        aria-labelledby={labelledBy}
     />;
 };
 
 const EMPTY_ARRAY: never[] = [];
 
-export const ImperativeSlider = ({value, onInput, min, max, step = 1, detents, disabled, className}: {
+export const ImperativeSlider = ({
+    value,
+    onInput,
+    min,
+    max,
+    step = 1,
+    detents,
+    disabled,
+    className,
+    id,
+    'aria-labelledby': labelledBy,
+}: {
     value: number;
     onInput?: (event: TargetedEvent<HTMLInputElement, InputEvent>) => unknown;
     min: number;
@@ -247,6 +283,8 @@ export const ImperativeSlider = ({value, onInput, min, max, step = 1, detents, d
     detents?: number[];
     disabled?: boolean;
     className?: string;
+    id?: string;
+    'aria-labelledby'?: string,
 }): JSX.Element => {
     const sliderInput = useRef<HTMLInputElement>(null);
 
@@ -287,6 +325,8 @@ export const ImperativeSlider = ({value, onInput, min, max, step = 1, detents, d
             onInput={handleInput}
             ref={sliderInput}
             list={memoDetents?.length ? dlId : undefined}
+            id={id}
+            aria-labelledby={labelledBy}
         >{dataList}</input>
     );
 };

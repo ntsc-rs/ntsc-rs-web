@@ -12,7 +12,7 @@
 - [ ] Notify on render completion
 - [x] Resizable panel widget from Glypht
 - [ ] Portrait mode
-- [ ] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
+- [x] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
 - [ ] Split-screen preview mode
 - [ ] Polyfill AAC encoder for Chrome (and apparently other browsers too)
 - [ ] Document limitations
@@ -24,3 +24,4 @@
   - Must stay "tabbed in" on mobile to avoid the tab being suspended
 - [ ] License list
 - [ ] Documentation
+- [ ] Tooltip component (with togglable "sticky" help icon) for inline help
