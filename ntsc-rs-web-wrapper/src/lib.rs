@@ -4,8 +4,9 @@ mod utils;
 extern crate alloc;
 
 use fast_image_resize::{
-    images::{CroppedImageMut, Image},
-    FilterType, PixelType, ResizeAlg, ResizeOptions, Resizer, SrcCropping,
+    images::{TypedCroppedImageMut, TypedImage},
+    pixels::U8x4,
+    FilterType, ResizeAlg, ResizeOptions, Resizer, SrcCropping,
 };
 use ntscrs::{
     yiq_fielding::{pixel_bytes_for, BlitInfo, DeinterlaceMode, PixelFormat, Rect, Rgbx, YiqView},
@@ -171,31 +172,29 @@ impl NtscEffectBuf {
                 mul_div_alpha: false,
             };
 
-            let src_image = Image::from_slice_u8(
+            let src_image = TypedImage::<'_, U8x4>::from_buffer(
                 self.input_dimensions.0 as u32,
                 self.input_dimensions.1 as u32,
                 &mut self.src,
-                PixelType::U8x4,
             )
             .map_err(|e| e.to_string())?;
-            let mut dst_image = Image::from_slice_u8(
+            let mut dst_image = TypedImage::<'_, U8x4>::from_buffer(
                 resize_dst_dimensions.0,
                 resize_dst_dimensions.1,
                 resize_dst,
-                PixelType::U8x4,
             )
             .map_err(|e| e.to_string())?;
 
             if dst_width_padded != dst_width || dst_height_padded != dst_height {
                 let mut cropped_dst_image =
-                    CroppedImageMut::new(&mut dst_image, 0, 0, dst_width as u32, dst_height as u32)
+                    TypedCroppedImageMut::new(dst_image, 0, 0, dst_width as u32, dst_height as u32)
                         .map_err(|e| e.to_string())?;
                 self.resizer
-                    .resize(&src_image, &mut cropped_dst_image, &resize_options)
+                    .resize_typed(&src_image, &mut cropped_dst_image, &resize_options)
                     .map_err(|e| e.to_string())?;
             } else {
                 self.resizer
-                    .resize(&src_image, &mut dst_image, &resize_options)
+                    .resize_typed(&src_image, &mut dst_image, &resize_options)
                     .map_err(|e| e.to_string())?;
             }
             &self.resize_buf

@@ -12,6 +12,7 @@ import {
     AudioSource,
     getEncodableAudioCodecs,
     getEncodableVideoCodecs,
+    registerEncoder,
 } from 'mediabunny';
 import {PipelineSettings} from './media-player';
 import EffectWorkerPool from './effect-worker-pool';
@@ -19,6 +20,7 @@ import Queue from './queue';
 import {TypedEvent, TypedEventTarget} from './typed-events';
 import {AppVideoCodec} from '../app-state';
 import {WrappedInput} from './still-image-media';
+import AACEncoder from './aac-codec';
 
 export type RenderJobSettings = {
     videoCodec: AppVideoCodec,
@@ -53,6 +55,8 @@ export class StateChangeEvent extends TypedEvent<'statechange'> {
         this.state = state;
     }
 }
+
+registerEncoder(AACEncoder);
 
 export const supportedCodecsForVideo = getEncodableVideoCodecs(['avc', 'vp8', 'vp9', 'av1'])
     .then(codecs => new Set(codecs));
@@ -425,9 +429,10 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
 
     cancel(reason?: unknown) {
         this.abortController.abort(reason);
-        this.input.then(input => input.close(), () => {});
-        const cancelPromise = this.output?.cancel();
+        const cancelPromise = this.output?.cancel() ?? Promise.resolve();
         this.changeState({state: 'cancelled', reason});
-        return cancelPromise;
+        return cancelPromise.then(() =>
+            this.input.then(input => input.close(), () => {}),
+        );
     }
 }

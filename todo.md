@@ -15,7 +15,7 @@
   - [ ] Figure out wrapping for the video controls
 - [x] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
 - [ ] Split-screen preview mode
-- [ ] Polyfill AAC encoder for Chrome (and apparently other browsers too)
+- [x] Polyfill AAC encoder for Chrome (and apparently other browsers too)
 - [ ] Document limitations
   - No interlaced video
   - No lossless video
@@ -30,3 +30,4 @@
 - [ ] Show codec details in render job widget
 - [ ] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
 - [ ] Actually investigate why rendering is so slow on Firefox
+- [x] Try to reduce code size (why is there a 500KB data section?)

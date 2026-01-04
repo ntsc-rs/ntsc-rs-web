@@ -1,0 +1,22 @@
+diff --git a/libavcodec/aacenc.c b/libavcodec/aacenc.c
+index b8df8dc..d1f7985 100644
+--- a/libavcodec/aacenc.c
++++ b/libavcodec/aacenc.c
+@@ -1204,16 +1204,13 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
+     }
+ 
+     if (s->needs_pce) {
+-        char buf[64];
+         for (i = 0; i < FF_ARRAY_ELEMS(aac_pce_configs); i++)
+             if (!av_channel_layout_compare(&avctx->ch_layout, &aac_pce_configs[i].layout))
+                 break;
+-        av_channel_layout_describe(&avctx->ch_layout, buf, sizeof(buf));
+         if (i == FF_ARRAY_ELEMS(aac_pce_configs)) {
+-            av_log(avctx, AV_LOG_ERROR, "Unsupported channel layout \"%s\"\n", buf);
++            av_log(avctx, AV_LOG_ERROR, "Unsupported channel layout\n");
+             return AVERROR(EINVAL);
+         }
+-        av_log(avctx, AV_LOG_INFO, "Using a PCE to encode channel layout \"%s\"\n", buf);
+         s->pce = aac_pce_configs[i];
+         s->reorder_map = s->pce.reorder_map;
+         s->chan_map = s->pce.config_map;

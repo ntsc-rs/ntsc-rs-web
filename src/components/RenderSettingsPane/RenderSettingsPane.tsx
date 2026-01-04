@@ -149,7 +149,7 @@ const RenderJobList = () => {
             case 'loading': return null;
             case 'error': return String(appState.renderJobs.value.error);
             case 'loaded': return appState.renderJobs.value.jobs.value
-                .map(job => <RenderJobComponent job={job} onRemove={removeJob} />);
+                .map(job => <RenderJobComponent job={job} onRemove={removeJob} key={job} />);
         }
     });
 

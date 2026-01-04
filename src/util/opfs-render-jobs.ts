@@ -59,12 +59,29 @@ class DiskRenderJob extends TypedEventTarget<ProgressEvent | StateChangeEvent | 
 }
 
 const serializeRenderJob = (job: RenderJobLike): SerializedRenderJobMetadata => {
+    let serializedState;
+    switch (job.state.state) {
+        case 'waiting':
+        case 'rendering':
+        case 'cancelled':
+            serializedState = job.state;
+            break;
+        case 'completed':
+            serializedState = {state: 'completed', time: job.state.time, file: null} as const;
+            break;
+        case 'error':
+            serializedState = {
+                state: 'error',
+                error: job.state.error instanceof Error ? job.state.error.message : job.state.error,
+            } as const;
+            break;
+    }
     return {
         sourceFileName: job.sourceFileName,
         videoCodec: job.videoCodec,
         opfsFileName: job.destination.name,
         startTime: job.startTime,
-        state: job.state,
+        state: serializedState,
     };
 };
 
@@ -107,19 +124,44 @@ export default class OpfsRenderJobManager {
                         const renderedFile = allRenderedFiles.get(job.opfsFileName);
                         if (!renderedFile || renderedFile.kind === 'directory') continue;
 
+                        let hydratedState;
+                        switch (job.state.state) {
+                            case 'waiting':
+                            case 'rendering':
+                            case 'cancelled':
+                                hydratedState = job.state;
+                                break;
+                            case 'completed':
+                                hydratedState = {
+                                    state: 'completed',
+                                    time: job.state.time,
+                                    file: await renderedFile.getFile(),
+                                } as const;
+                                break;
+                            case 'error':
+                                hydratedState = {
+                                    state: 'error',
+                                    error: typeof job.state.error === 'string' ?
+                                        new Error(job.state.error) :
+                                        job.state.error,
+                                } as const;
+                                break;
+                        }
                         const hydrated = new DiskRenderJob(
                             job.sourceFileName,
                             job.videoCodec,
                             job.startTime,
-                            job.state,
+                            hydratedState,
                             renderedFile,
                         );
                         renderList.push(hydrated);
                         knownRenderedFiles.add(job.opfsFileName);
                     }
                 }
-            } catch {
+            } catch (err) {
                 // If the list is corrupted, don't get stuck
+                // eslint-disable-next-line no-console
+                console.warn('Failed to load saved render jobs:', err);
             }
         }
 

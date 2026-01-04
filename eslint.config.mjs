@@ -8,7 +8,9 @@ export default tseslint.config(
     {
         ignores: [
             '**/public/**/*.{cjs,mjs,js,ts,jsx,tsx}',
-            '**/ntsc-rs-web-wrapper/**/*',
+            'ntsc-rs-web-wrapper/**/*',
+            'aac-codec/**/*',
+            'dist/**/*',
         ],
     },
     eslint.configs.recommended,

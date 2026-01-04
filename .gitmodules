@@ -1,0 +1,3 @@
+[submodule "aac-codec/FFmpeg"]
+	path = aac-codec/FFmpeg
+	url = https://code.ffmpeg.org/FFmpeg/FFmpeg

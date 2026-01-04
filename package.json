@@ -5,7 +5,8 @@
 		"dev": "vite",
 		"build": "vite build",
 		"preview": "vite preview",
-		"lint": "eslint"
+		"lint": "eslint",
+        "build-aac-codec": "docker build -t ntsc_rs_web_aac ./aac-codec && docker run --rm -v ./aac-codec:/src -u $(id -u):$(id -g) -it ntsc_rs_web_aac /bin/bash -c 'cd /src && ./build.sh'"
 	},
 	"dependencies": {
 		"@floating-ui/dom": "^1.7.4",

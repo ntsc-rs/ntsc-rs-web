@@ -1,0 +1,24 @@
+diff --git a/libavcodec/aaccoder.c b/libavcodec/aaccoder.c
+index 7f1c4cd..ff0539a 100644
+--- a/libavcodec/aaccoder.c
++++ b/libavcodec/aaccoder.c
+@@ -841,19 +841,6 @@ static void search_for_ms(AACEncContext *s, ChannelElement *cpe)
+ }
+ 
+ const AACCoefficientsEncoder ff_aac_coders[AAC_CODER_NB] = {
+-    [AAC_CODER_TWOLOOP] = {
+-        search_for_quantizers_twoloop,
+-        codebook_trellis_rate,
+-        quantize_and_encode_band,
+-        ff_aac_encode_tns_info,
+-        ff_aac_apply_tns,
+-        set_special_band_scalefactors,
+-        search_for_pns,
+-        mark_pns,
+-        ff_aac_search_for_tns,
+-        search_for_ms,
+-        ff_aac_search_for_is,
+-    },
+     [AAC_CODER_FAST] = {
+         search_for_quantizers_fast,
+         codebook_trellis_rate,

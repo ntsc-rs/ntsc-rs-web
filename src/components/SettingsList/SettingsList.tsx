@@ -95,6 +95,7 @@ const GroupBox = (
                         value={settingsMap[descriptor.idName]}
                         settingsMap={settingsMap}
                         disabled={disabled || !checked.value}
+                        key={descriptor.id}
                     />,
                 )}
             </div>

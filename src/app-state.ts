@@ -10,7 +10,7 @@ import init, {
     setPanicHook,
 } from 'ntsc-rs-web-wrapper';
 import throttle from './util/throttle';
-import RenderJob from './util/render-job';
+import RenderJob, {StateChangeEvent} from './util/render-job';
 import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 await init();
@@ -180,6 +180,16 @@ export class AppState {
             },
             isOPFS,
         );
+        const onStateChange = (event: StateChangeEvent) => {
+            if (
+                this.renderJobs.value.state === 'loaded' &&
+                (event.state.state === 'completed' || event.state.state === 'error')
+            ) {
+                void this.opfsRenderJobManager.persistRenderList(this.renderJobs.value.jobs.value);
+                renderJob.removeEventListener('statechange', onStateChange);
+            }
+        };
+        renderJob.addEventListener('statechange', onStateChange);
 
         const newRenderJobs = this.renderJobs.value.jobs.value.slice(0);
         newRenderJobs.push(renderJob);
