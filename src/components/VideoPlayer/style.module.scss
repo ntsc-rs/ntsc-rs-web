@@ -29,6 +29,11 @@
     min-width: 0;
 }
 
+.total-duration.infinite {
+    font-size: 2rem;
+    color: theme.$text-detail;
+}
+
 .video-info-bar {
     display: flex;
     flex: 0 0 2em;
@@ -57,6 +62,10 @@
     padding-left: 0.5rem;
 }
 
+.video-framerate {
+    gap: 0.5rem;
+}
+
 .player-controls {
     display: flex;
     border-top: 1px solid theme.$divider;
@@ -69,6 +78,10 @@
         &:last-child {
             border-right: none;
         }
+    }
+
+    &.disabled {
+        color: theme.$interactive-muted;
     }
 }
 

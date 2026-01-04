@@ -1,7 +1,7 @@
-- [ ] Still-image input
-  - [ ] Adjustable framerate
-  - [ ] Adjustable duration
-  - [ ] Spinbox-based time control
+- [x] Still-image input
+  - [x] Adjustable framerate
+  - [x] Adjustable duration
+  - [x] Spinbox-based time control
 - [ ] "Copy frame" and "Save frame" buttons
 - [ ] Image-sequence output in Chrome (the only browser with a directory picker)
 - [ ] OPFS-based preset manager?
@@ -12,6 +12,7 @@
 - [ ] Notify on render completion
 - [x] Resizable panel widget from Glypht
 - [ ] Portrait mode
+  - [ ] Figure out wrapping for the video controls
 - [x] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
 - [ ] Split-screen preview mode
 - [ ] Polyfill AAC encoder for Chrome (and apparently other browsers too)
@@ -25,3 +26,7 @@
 - [ ] License list
 - [ ] Documentation
 - [ ] Tooltip component (with togglable "sticky" help icon) for inline help
+- [ ] Handle non-square PAR
+- [ ] Show codec details in render job widget
+- [ ] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
+- [ ] Actually investigate why rendering is so slow on Firefox

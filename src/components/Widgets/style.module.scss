@@ -36,6 +36,7 @@
 
 .spinbox-wrapper {
     @include global.textbox();
+    --padding-right: #{global.$textbox-padding-x};
     padding: 0;
     display: flex;
     overflow: hidden;
@@ -46,10 +47,12 @@
     }
 }
 
-input[type=number].spinbox-field {
+input[type=number].spinbox-field, input[type=text].spinbox-field {
     appearance: textfield;
-    width: 3.5rem;
-    padding: global.$textbox-padding-y 0 global.$textbox-padding-y global.$textbox-padding-x;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: global.$textbox-padding-y 0;
+    text-indent: global.$textbox-padding-x;
     background: none;
     border: none;
     margin: 0;
@@ -72,12 +75,14 @@ input[type=number].spinbox-field {
 
 .spinbox-buttons {
     display: flex;
+    flex: 0 0 1rem;
     flex-direction: column;
     border-left: 1px solid var(--border-color);
+    width: 1rem;
+    box-sizing: border-box;
 }
 
 .spinbox-button {
-    width: 1rem;
     flex: 1 1 auto;
     cursor: pointer;
     background-color: theme.$base-color-secondary-dark;
@@ -122,18 +127,29 @@ input[type=number].spinbox-field {
     display: flex;
     border-radius: theme.$radius;
 
-    &:hover {
+    &:not(:disabled):hover {
         background-color: theme.$toggle-hover;
     }
 
-    &:active {
+    &:not(:disabled):active {
         background-color: theme.$toggle-active;
     }
+}
+
+.toggle-icon:disabled {
+    color: theme.$interactive-muted;
+    cursor: not-allowed;
 }
 
 .toggle-icon.toggledOn {
     background-color: theme.$toggle-active;
     outline: 1px solid theme.$interactive-normal;
+
+    &:disabled {
+        background-color: theme.$toggle-active-disabled;
+        outline-color: theme.$interactive-muted;
+        color: theme.$interactive-normal;
+    }
 }
 
 .button-contents {
@@ -148,7 +164,7 @@ input[type=number].spinbox-field {
     align-items: center;
 
     &.disabled {
-        color: theme.$text-detail;
+        color: theme.$interactive-normal;
     }
 }
 

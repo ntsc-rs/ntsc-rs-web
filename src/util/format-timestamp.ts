@@ -35,4 +35,20 @@ const formatTimestampHuman = (seconds: number) => {
     });
 };
 
-export {formatTimestamp, formatTimestampHuman};
+const parseTimestamp = (timestamp: string): number | null => {
+    const parts = timestamp.split(':');
+    let seconds = 0;
+    if (parts.length > 3) return null;
+    for (const part of parts) {
+        const numPart = Number(part);
+        if (!Number.isFinite(numPart) || numPart < 0) {
+            return null;
+        }
+        seconds *= 60;
+        seconds += numPart;
+    }
+
+    return seconds;
+};
+
+export {formatTimestamp, formatTimestampHuman, parseTimestamp};

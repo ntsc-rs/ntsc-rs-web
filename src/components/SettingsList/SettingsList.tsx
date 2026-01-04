@@ -25,7 +25,15 @@ export const SliderWithSpinBox = (
     return (
         <div className={style.sliderWithSpinbox}>
             <Slider min={min} max={max} step={step} value={value} disabled={disabled} aria-labelledby={labelledBy} />
-            <SpinBox min={min} max={max} step={step} value={value} disabled={disabled} aria-labelledby={labelledBy} />
+            <SpinBox
+                min={min}
+                max={max}
+                step={step}
+                value={value}
+                disabled={disabled}
+                aria-labelledby={labelledBy}
+                width={5}
+            />
         </div>
     );
 };

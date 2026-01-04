@@ -164,7 +164,6 @@ const renderFrame = async<F extends keyof Formats>(
         // bajillion different race conditions because the committees who design these APIs never have to actually
         // use them.
         await frame.copyTo(sourceFrameWasm, {format: 'RGBX', colorSpace: 'srgb'});
-        //console.time('applyEffect');
         const dstFrameWasm = effect.applyEffect(
             frameNum,
             outputWidth,
@@ -173,7 +172,6 @@ const renderFrame = async<F extends keyof Formats>(
             padToEven,
             effectEnabled,
         );
-        //console.timeEnd('applyEffect');
         const dstFrameClamped = new Uint8ClampedArray(
             dstFrameWasm.buffer as ArrayBuffer,
             dstFrameWasm.byteOffset,

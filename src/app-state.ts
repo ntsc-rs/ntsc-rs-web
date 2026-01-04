@@ -40,8 +40,11 @@ export class AppState {
     zoomPercent: Signal<number>;
     effectPreviewMode: Signal<EffectPreviewMode>;
 
+    stillImageFrameRate: Signal<number>;
+
     renderVideoCodec: Signal<AppVideoCodec | null>;
     renderVideoBitrate: Signal<number>;
+    renderStillImageDuration: Signal<number>;
 
     renderJobs: Signal<RenderJobListState>;
     mediaBlob: Signal<File | null>;
@@ -83,8 +86,10 @@ export class AppState {
         this.zoomFit = signal(true);
         this.zoomPercent = signal(100);
         this.effectPreviewMode = signal('enabled' as const);
+        this.stillImageFrameRate = signal(30);
         this.renderVideoCodec = signal('avc');
         this.renderVideoBitrate = signal(10);
+        this.renderStillImageDuration = signal(60);
         this.renderJobs = signal({state: 'loading'});
         this.mediaBlob = signal(null);
 
@@ -101,10 +106,12 @@ export class AppState {
                 resizeEnabled: this.resizeEnabled.value,
                 resizeHeight: this.resizeHeight.value,
                 resizeFilter: this.resizeFilter.value,
+                stillImageFrameRate: this.stillImageFrameRate.value,
                 mute: this.mute.value,
                 volume: this.volume.value,
                 renderVideoCodec: this.renderVideoCodec.value,
                 renderVideoBitrate: this.renderVideoBitrate.value,
+                renderStillImageDuration: this.renderStillImageDuration.value,
                 version: 1 as const,
             };
 
@@ -168,8 +175,8 @@ export class AppState {
                     effectEnabled: true,
                     effectSettings: this.settingsAsObject.value,
                 },
-                stillImageDuration: 60,
-                stillImageFrameRate: 30,
+                stillImageDuration: this.renderStillImageDuration.value,
+                stillImageFrameRate: this.stillImageFrameRate.value,
             },
             isOPFS,
         );
@@ -212,11 +219,13 @@ type SavedState = {
     resizeEnabled: boolean,
     resizeHeight: number,
     resizeFilter: ResizeFilter,
+    stillImageFrameRate: number,
     mute: boolean,
     volume: number,
-    version: 1,
     renderVideoCodec: AppVideoCodec | null,
     renderVideoBitrate: number,
+    renderStillImageDuration: number,
+    version: 1,
 };
 
 const loadState = (store: AppState) => {
@@ -240,10 +249,12 @@ const loadState = (store: AppState) => {
         store.resizeEnabled.value = savedState.resizeEnabled;
         store.resizeHeight.value = savedState.resizeHeight;
         store.resizeFilter.value = savedState.resizeFilter;
+        store.stillImageFrameRate.value = savedState.stillImageFrameRate;
         store.mute.value = savedState.mute;
         store.volume.value = savedState.volume;
         store.renderVideoCodec.value = savedState.renderVideoCodec;
         store.renderVideoBitrate.value = savedState.renderVideoBitrate;
+        store.renderStillImageDuration.value = savedState.renderStillImageDuration;
     } catch {
         // Swallow errors here
     }

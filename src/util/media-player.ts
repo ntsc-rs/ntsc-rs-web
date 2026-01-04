@@ -115,7 +115,7 @@ export type PipelineSettings = {
 };
 
 export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChangeEvent> {
-    private input: WrappedInput;
+    readonly input: WrappedInput;
     private videoSink: VideoSampleSinkLike;
     private audioSink: AudioBufferSink | null;
     private audioContext: AudioContext;
@@ -165,8 +165,13 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.pipelineSettings = settings;
     }
 
-    static async create(source: Blob, workerPool: Promise<EffectWorkerPool>, settings: PipelineSettings) {
-        const input = await WrappedInput.create(source, {calculateFrameRate: true});
+    static async create(
+        source: Blob,
+        workerPool: Promise<EffectWorkerPool>,
+        settings: PipelineSettings,
+        stillImageFrameRate: number,
+    ) {
+        const input = await WrappedInput.create(source, {calculateFrameRate: true, stillImageFrameRate});
 
         const audioTrack: InputAudioTrack | undefined = input.audioTracks[0];
         const audioContext = new AudioContext({sampleRate: audioTrack?.sampleRate});

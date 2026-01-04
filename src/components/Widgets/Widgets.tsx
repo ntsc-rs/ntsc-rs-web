@@ -7,6 +7,7 @@ import {useSignal, type Signal} from '@preact/signals';
 import classNames from 'clsx';
 import Icon, {IconType} from '../Icon/Icon';
 import {Motif} from '../../util/motif';
+import {formatTimestamp, parseTimestamp} from '../../util/format-timestamp';
 
 export const Dropdown = <T extends string | number>({
     value,
@@ -50,39 +51,120 @@ export const Dropdown = <T extends string | number>({
     );
 };
 
+
 export const SpinBox = ({
     value,
+    customDisplay,
     min,
     max,
+    sensitivity,
     step = 1,
     smartAim = 0,
     disabled,
     className,
     inputId,
+    width,
     'aria-labelledby': labelledBy,
 }: {
     value: Signal<number>;
-    min: number;
-    max: number;
+    customDisplay?: SpinBoxDisplayFuncs,
+    min?: number;
+    max?: number;
+    sensitivity?: number;
     step?: number | 'any';
     smartAim?: number;
     disabled?: boolean;
     className?: string;
     inputId?: string;
+    width?: number;
     'aria-labelledby'?: string;
 }): JSX.Element => {
-    const handleInput = useCallback((event: Event) => {
-        const newValue = Number((event.target as HTMLInputElement).value);
+    const handleInput = useCallback((newValue: number) => {
         value.value = newValue;
     }, [value]);
 
+    return <ImperativeSpinBox
+        value={value.value}
+        onInput={handleInput}
+        customDisplay={customDisplay}
+        min={min}
+        max={max}
+        sensitivity={sensitivity}
+        step={step}
+        smartAim={smartAim}
+        disabled={disabled}
+        className={className}
+        inputId={inputId}
+        width={width}
+        aria-labelledby={labelledBy}
+    />;
+};
+
+export type SpinBoxDisplayFuncs = {
+    display: (value: number) => string,
+    parse: (value: string) => number | null,
+};
+
+
+export const timestampSpinboxDisplay = {
+    display(value: number) {
+        return formatTimestamp(value);
+    },
+    parse(value: string) {
+        return parseTimestamp(value);
+    },
+};
+
+export const ImperativeSpinBox = ({
+    value,
+    onInput,
+    customDisplay,
+    min,
+    max,
+    sensitivity,
+    step = 1,
+    smartAim = 0,
+    disabled,
+    className,
+    inputId,
+    width,
+    'aria-labelledby': labelledBy,
+}: {
+    value: number;
+    onInput: (value: number) => unknown,
+    customDisplay?: SpinBoxDisplayFuncs,
+    min?: number;
+    max?: number;
+    sensitivity?: number;
+    step?: number | 'any';
+    smartAim?: number;
+    disabled?: boolean;
+    className?: string;
+    inputId?: string;
+    width?: number;
+    'aria-labelledby'?: string;
+}): JSX.Element => {
+    const currentValue = useRef(value);
+    currentValue.current = value;
+
+    const handleInput = useCallback((event: TargetedEvent<HTMLInputElement, InputEvent>) => {
+        const newValue = customDisplay ?
+            customDisplay.parse(event.currentTarget.value) :
+            Number(event.currentTarget.value);
+        if (newValue !== null) onInput(newValue);
+    }, [currentValue, customDisplay?.parse, onInput]);
+
     const increment = useCallback(() => {
-        value.value = Math.min(value.value + (step === 'any' ? 1 : step), max);
-    }, [value, step]);
+        let incremented = currentValue.current + (step === 'any' ? 1 : step);
+        if (typeof max === 'number') incremented = Math.min(incremented, max);
+        onInput(incremented);
+    }, [currentValue, max, step, onInput]);
 
     const decrement = useCallback(() => {
-        value.value = Math.max(value.value - (step === 'any' ? 1 : step), min);
-    }, [value, step]);
+        let decremented = currentValue.current - (step === 'any' ? 1 : step);
+        if (typeof min === 'number') decremented = Math.max(decremented, min);
+        onInput(decremented);
+    }, [currentValue, min, step, onInput]);
 
     const spinboxId = useId();
 
@@ -107,13 +189,15 @@ export const SpinBox = ({
         if (document.activeElement !== event.currentTarget) {
             event.preventDefault();
             event.currentTarget.focus();
+        } else {
+            return;
         }
         if (disabled) return;
         // Don't count up/down drags if the cursor is inside the spinbox
         const target = event.currentTarget;
         const rect = target.getBoundingClientRect();
         const deadZone = rect;
-        const valueStart = value.value;
+        const valueStart = currentValue.current;
 
         const onMove = (event: PointerEvent) => {
             let mouseDelta = 0;
@@ -134,18 +218,30 @@ export const SpinBox = ({
             document.getSelection()?.empty();
 
             // 200px (in either direction; it's the "radius", not "diameter") for the slider to go from min to max
-            const valueDelta = mouseDelta * (max - min) / 200;
+            let computedSensitivity;
+            if (sensitivity) {
+                computedSensitivity = sensitivity;
+            } else if (typeof min === 'number' && typeof max === 'number') {
+                computedSensitivity = (max - min) / 200;
+            } else {
+                computedSensitivity = 1;
+            }
+            const valueDelta = mouseDelta * computedSensitivity;
 
             const newValue = valueStart - valueDelta;
-            const clampedValue = Math.max(min, Math.min(newValue, max));
+            let clampedValue = newValue;
+            if (typeof max === 'number') clampedValue = Math.min(clampedValue, max);
+            if (typeof min === 'number') clampedValue = Math.max(clampedValue, min);
             let roundedValue = step === 'any' ? clampedValue : Math.round(clampedValue / step) * step;
             if (smartAim > 0) {
-                const roundedToAim = Math.round(newValue / smartAim) * smartAim;
+                let roundedToAim = Math.round(newValue / smartAim) * smartAim;
                 if (Math.abs(roundedToAim - newValue) < smartAim / 4) {
-                    roundedValue = Math.max(min, Math.min(roundedToAim, max));
+                    if (typeof max === 'number') roundedToAim = Math.min(roundedToAim, max);
+                    if (typeof min === 'number') roundedToAim = Math.max(roundedToAim, min);
+                    roundedValue = roundedToAim;
                 }
             }
-            value.value = roundedValue;
+            onInput(roundedValue);
         };
 
         const onUp = () => {
@@ -156,7 +252,7 @@ export const SpinBox = ({
 
         window.addEventListener('pointermove', onMove);
         window.addEventListener('pointerup', onUp);
-    }, [min, max, value, disabled]);
+    }, [min, max, sensitivity, currentValue, disabled]);
 
     const handleFocus = useCallback(() => {
         if (disabled) return;
@@ -165,15 +261,24 @@ export const SpinBox = ({
     const handleBlur = useCallback(() => {
         isEditing.value = false;
         // Ensure the value is clamped to min/max when editing ends
-        value.value = Math.max(min, Math.min(value.value, max));
-    }, [isEditing, value, min, max]);
+        let clampedValue = currentValue.current;
+        if (typeof max === 'number') clampedValue = Math.min(clampedValue, max);
+        if (typeof min === 'number') clampedValue = Math.max(clampedValue, min);
+        onInput(clampedValue);
+    }, [isEditing, currentValue, min, max]);
 
     return (
-        <div className={classNames(
-            style.spinboxWrapper,
-            className,
-            disabled && style.disabled,
-        )} aria-disabled={disabled}>
+        <div
+            className={classNames(
+                style.spinboxWrapper,
+                className,
+                disabled && style.disabled,
+            )}
+            aria-disabled={disabled}
+            style={{
+                width: width ? `calc(${width}ch + var(--padding-right) * 2 + 1rem)` : undefined,
+            }}
+        >
             <input
                 className={classNames(
                     style.spinboxField,
@@ -181,11 +286,11 @@ export const SpinBox = ({
                     'tabular-nums',
                     disabled && style.disabled,
                 )}
-                type="number"
+                type={customDisplay ? 'text' : 'number'}
                 min={min}
                 max={max}
                 step={step}
-                value={Number(value.value.toFixed(12))}
+                value={customDisplay ? customDisplay.display(value) : Number(value.toPrecision(12))}
                 disabled={disabled}
                 onInput={handleInput}
                 id={inputId ?? spinboxId}
@@ -197,7 +302,7 @@ export const SpinBox = ({
             <div className={style.spinboxButtons}>
                 <button
                     onClick={increment}
-                    disabled={disabled || (value.value === max)}
+                    disabled={disabled || (value === max)}
                     className={style.spinboxButton}
                     role="button"
                     aria-controls={inputId ?? spinboxId}
@@ -208,7 +313,7 @@ export const SpinBox = ({
                 <div className={style.spinboxButtonDivider} />
                 <button
                     onClick={decrement}
-                    disabled={disabled || (value.value === min)}
+                    disabled={disabled || (value === min)}
                     className={style.spinboxButton}
                     role="button"
                     aria-controls={inputId ?? spinboxId}
@@ -357,11 +462,12 @@ export const ToggleIcon = ({type, title, toggled, innerRef, className}: {
 };
 
 // eslint-disable-next-line @stylistic/comma-dangle
-export const SelectableButton = <const T, >({children, title, currentValue, value}: {
+export const SelectableButton = <const T, >({children, title, currentValue, value, disabled}: {
     children?: ComponentChildren;
     title?: string;
     currentValue: Signal<T>;
     value: T;
+    disabled?: boolean;
 }) => {
     const handleClick = useCallback(() => {
         currentValue.value = value;
@@ -378,6 +484,7 @@ export const SelectableButton = <const T, >({children, title, currentValue, valu
             aria-checked={currentValue.value === value}
             title={title}
             tabindex={0}
+            disabled={disabled}
         >
             {children}
         </button>

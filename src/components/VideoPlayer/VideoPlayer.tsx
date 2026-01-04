@@ -3,8 +3,16 @@ import style from './style.module.scss';
 import {useCallback, useEffect, useLayoutEffect, useMemo} from 'preact/hooks';
 import {useAppState} from '../../app-state';
 import MediaPlayer, {FrameEvent, StateChangeEvent} from '../../util/media-player';
-import {useComputed, useSignal} from '@preact/signals';
-import {CheckboxToggle, ImperativeSlider, SelectableButton, Slider, SpinBox} from '../Widgets/Widgets';
+import {useComputed, useSignal, useSignalEffect} from '@preact/signals';
+import {
+    CheckboxToggle,
+    ImperativeSlider,
+    ImperativeSpinBox,
+    SelectableButton,
+    Slider,
+    SpinBox,
+    timestampSpinboxDisplay,
+} from '../Widgets/Widgets';
 import Icon, {IconButton} from '../Icon/Icon';
 import showOpenFilePicker from '../../util/file-picker';
 import {useAddErrorToast} from '../Toast/Toast';
@@ -33,7 +41,7 @@ const VideoPlayer = () => {
                 resizeFilter: appState.resizeFilter.value,
                 effectEnabled: appState.effectPreviewMode.value === 'enabled',
                 effectSettings: appState.settingsAsObject.value,
-            }).then(player => {
+            }, appState.stillImageFrameRate.value).then(player => {
                 mediaPlayer.value = {state: 'loaded', player};
                 return player;
             }, error => {
@@ -156,6 +164,23 @@ const MediaDropZone = () => {
     );
 };
 
+const FrameRateAdjuster  = ({player}: {player: MediaPlayer}) => {
+    const {stillImageFrameRate} = useAppState();
+    useSignalEffect(() => {
+        player.input.frameRate = stillImageFrameRate.value;
+        player.state = 'paused';
+    });
+
+    return <SpinBox
+        value={stillImageFrameRate}
+        min={1}
+        max={240}
+        step={1}
+        smartAim={6}
+        width={3}
+    />;
+};
+
 const VideoInfoBar = ({player}: {player: MediaPlayer | null}) => {
     const appState = useAppState();
     const mediaFile = appState.mediaBlob;
@@ -171,7 +196,11 @@ const VideoInfoBar = ({player}: {player: MediaPlayer | null}) => {
             <div className={style.videoFileName}>{mediaFile.value.name}</div>
             {player && <div className={style.videoInfo}>
                 <div className={style.videoResolution}>{player.width}x{player.height}</div>
-                <div className={style.videoFramerate}>{player.frameRate.toFixed(2)} fps</div>
+                <div className={style.videoFramerate}>{
+                    player.input.isStillImage ?
+                        <FrameRateAdjuster player={player} /> :
+                        player.frameRate.toFixed(2)
+                } fps</div>
             </div>}
             <IconButton type="close" title="Close" onClick={closeVideo} />
         </div>
@@ -208,7 +237,7 @@ const VideoControls = ({player}: {player: MediaPlayer | null}) => {
     }, [effectPreviewMode.value, player]);
 
     return (
-        <div className={style.playerControls}>
+        <div className={classNames(style.playerControls, player === null && style.disabled)}>
             <div className={style.timeControls}>
                 <IconButton
                     type={playing.value ? 'pause' : 'play'}
@@ -265,10 +294,10 @@ const VideoControls = ({player}: {player: MediaPlayer | null}) => {
                     type="effect"
                     title="Effect preview"
                 />
-                <SelectableButton currentValue={effectPreviewMode} value="enabled">
+                <SelectableButton currentValue={effectPreviewMode} value="enabled" disabled={player === null}>
                     Enable
                 </SelectableButton>
-                <SelectableButton currentValue={effectPreviewMode} value="disabled">
+                <SelectableButton currentValue={effectPreviewMode} value="disabled" disabled={player === null}>
                     Disable
                 </SelectableButton>
             </div>
@@ -280,6 +309,9 @@ const VideoScrubber = ({player}: {player: MediaPlayer}) => {
     const handleScrub = useCallback((event: TargetedEvent<HTMLInputElement, InputEvent>) => {
         void player.seek(Number(event.currentTarget.value));
     }, [player]);
+    const handleSpinboxScrub = useCallback((value: number) => {
+        void player.seek(value);
+    }, [player]);
     const scrubValue = useSignal(0);
     useLayoutEffect(() => {
         const onFrame = (event: FrameEvent) => {
@@ -290,26 +322,41 @@ const VideoScrubber = ({player}: {player: MediaPlayer}) => {
             player.removeEventListener('frame', onFrame);
         };
     }, [player, scrubValue]);
-    const currentTimestamp = useComputed(() => {
-        return formatTimestamp(scrubValue.value);
-    });
     const totalDuration = useMemo(() => {
-        return player.duration === null ? null : formatTimestamp(player.duration);
+        return player.duration === null ? '∞' : formatTimestamp(player.duration);
+    }, [player]);
+    const spinboxWidth = useMemo(() => {
+        const formattedTimestamp = formatTimestamp(player.duration ?? (60 * 60));
+        const numericLength = formattedTimestamp.replace(/[^\d]/g, '').length;
+        const punctuationLength = formattedTimestamp.length - numericLength;
+        return numericLength + (punctuationLength * (1 / 3));
     }, [player]);
 
-    if (player.duration === null) return null;
     return (
         <div className={classNames(style.videoScrubber, 'tabular-nums')}>
-            <div className={style.currentTimestamp}>{currentTimestamp.value}</div>
+            <div className={style.currentTimestamp}>
+                <ImperativeSpinBox
+                    value={scrubValue.value}
+                    onInput={handleSpinboxScrub}
+                    customDisplay={timestampSpinboxDisplay}
+                    min={0}
+                    max={player.duration ?? undefined}
+                    step={1 / player.frameRate}
+                    width={spinboxWidth}
+                />
+            </div>
             <ImperativeSlider
                 min={0}
-                max={player.duration}
+                max={player.duration ?? 0}
                 value={scrubValue.value}
                 step="any"
                 onInput={handleScrub}
                 className={style.scrubberSlider}
+                disabled={player.duration === null}
             />
-            <div className={style.totalDuration}>{totalDuration}</div>
+            <div
+                className={classNames(style.totalDuration, player.duration === null && style.infinite)}
+            >{totalDuration}</div>
         </div>
     );
 };

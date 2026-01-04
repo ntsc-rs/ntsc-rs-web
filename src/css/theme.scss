@@ -14,6 +14,7 @@
 
     --toggle-hover: #f8f1e62a;
     --toggle-active: #f8f1e629;
+    --toggle-active-disabled: #f8f1e619;
 
     --interactive-normal: #9b9996;
     --interactive-hover: #dbdad7;
@@ -59,6 +60,7 @@ $link: var(--link);
 $link-underline: var(--link-underline);
 $toggle-hover: var(--toggle-hover);
 $toggle-active: var(--toggle-active);
+$toggle-active-disabled: var(--toggle-active-disabled);
 $interactive-normal: var(--interactive-normal);
 $interactive-hover: var(--interactive-hover);
 $interactive-active: var(--interactive-active);

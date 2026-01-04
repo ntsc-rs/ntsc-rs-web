@@ -1,7 +1,7 @@
 import style from './style.module.scss';
 
 import {AppVideoCodec, useAppState} from '../../app-state';
-import {Button, Dropdown} from '../Widgets/Widgets';
+import {Button, Dropdown, SpinBox, timestampSpinboxDisplay} from '../Widgets/Widgets';
 import {batch, useComputed, useSignal} from '@preact/signals';
 import {useCallback, useLayoutEffect} from 'preact/hooks';
 import {SliderWithSpinBox} from '../SettingsList/SettingsList';
@@ -236,6 +236,21 @@ const RenderSettingsPane = () => {
                         />
                         <div className={style.settingLabel}>Bitrate (Mbps)</div>
                     </div>
+                    {/*
+                      * TODO: ideally we'd have access to the WrappedInput here so we could just check `isStillImage`
+                      * instead of duplicating the check
+                      */}
+                    {appState.mediaBlob.value?.type.startsWith('image/') &&
+                        <div className={style.setting}>
+                            <SpinBox
+                                value={appState.renderStillImageDuration}
+                                min={1 / appState.stillImageFrameRate.value}
+                                customDisplay={timestampSpinboxDisplay}
+                            />
+                            <div className={style.settingLabel}>Duration</div>
+                        </div>
+                    }
+
                 </div>
                 <div className={style.renderButtons}>
                     <Button

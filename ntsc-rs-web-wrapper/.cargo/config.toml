@@ -1,6 +1,7 @@
 [target.wasm32-unknown-unknown]
 rustflags = [
-    "-C", "target-feature=+atomics,+bulk-memory,+simd128,+relaxed-simd",
+    #"-C", "target-feature=+atomics,+bulk-memory,+simd128,+relaxed-simd",
+    "-C", "target-feature=+bulk-memory,+simd128",
     #"-C", "link-arg=--shared-memory",
     #"-C", "link-arg=--max-memory=1073741824",
     "-C", "link-arg=--import-memory",

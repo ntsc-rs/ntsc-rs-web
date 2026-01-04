@@ -1,4 +1,5 @@
 import {ALL_FORMATS, AnyIterable, BlobSource, Input, InputAudioTrack, VideoSample, VideoSampleSink} from 'mediabunny';
+import {TypedEvent, TypedEventTarget} from './typed-events';
 
 export interface VideoSampleSinkLike {
     getSample(timestamp: number): Promise<VideoSample | null>;
@@ -22,6 +23,10 @@ export class StillImageSink implements VideoSampleSinkLike {
         return this._frameRate;
     }
 
+    set frameRate(frameRate: number) {
+        this._frameRate = frameRate;
+    }
+
     getSample(timestamp: number): Promise<VideoSample | null> {
         if (timestamp < 0 || timestamp >= this._duration) return Promise.resolve(null);
         const frameNum = Math.floor(timestamp * this._frameRate);
@@ -38,15 +43,19 @@ export class StillImageSink implements VideoSampleSinkLike {
         startTimestamp: number = 0,
         endTimestamp: number = Infinity,
     ): AsyncGenerator<VideoSample, void, unknown> {
-        const start = Math.floor(startTimestamp * this._frameRate);
-        const end = Math.floor(Math.min(endTimestamp, this._duration) * this._frameRate);
+        const frameRate = this._frameRate;
+        const start = Math.floor(startTimestamp * frameRate);
+        const end = Math.floor(Math.min(endTimestamp, this._duration) * frameRate);
         for (let i = start; i < end; i++) {
-            const frameStamp = i / this._frameRate;
-            const next = (i + 1) / this._frameRate;
+            const frameStamp = i / frameRate;
+            const next = (i + 1) / frameRate;
             yield new VideoSample(this.frame.clone(), {
                 timestamp: frameStamp,
                 duration: next - frameStamp,
             });
+            if (this._frameRate !== frameRate) {
+                return;
+            }
         }
     }
 
@@ -61,7 +70,15 @@ export class StillImageSink implements VideoSampleSinkLike {
     }
 }
 
-export class WrappedInput {
+export class FrameRateChangeEvent extends TypedEvent<'frameratechange'> {
+    readonly frameRate: number;
+    constructor(frameRate: number) {
+        super('frameratechange');
+        this.frameRate = frameRate;
+    }
+}
+
+export class WrappedInput extends TypedEventTarget<FrameRateChangeEvent> {
     private input: Input | null;
     private _audioTracks: InputAudioTrack[];
     private _videoSampleSink: VideoSampleSinkLike;
@@ -70,6 +87,7 @@ export class WrappedInput {
     readonly duration: number | null;
     readonly visibleWidth: number;
     readonly visibleHeight: number;
+    readonly isStillImage: boolean;
 
     private constructor(
         input: Input | null,
@@ -79,7 +97,10 @@ export class WrappedInput {
         videoSampleSink: VideoSampleSinkLike,
         width: number,
         height: number,
+        isStillImage: boolean,
     ) {
+        super();
+
         this.input = input;
         this.duration = duration;
         this._audioTracks = audioTracks;
@@ -87,28 +108,30 @@ export class WrappedInput {
         this._frameRate = frameRate;
         this.visibleWidth = width;
         this.visibleHeight = height;
+        this.isStillImage = isStillImage;
     }
 
-    static async create(source: Blob, options?: {
+    static async create(source: Blob, options: {
         calculateFrameRate?: boolean,
-        stillImageFrameRate?: number,
+        stillImageFrameRate: number,
         stillImageDuration?: number,
     }) {
         if (source.type.startsWith('image/')) {
             const image = await createImageBitmap(source);
             const sink = new StillImageSink(
                 image,
-                options?.stillImageFrameRate ?? 30,
-                options?.stillImageDuration ?? Infinity,
+                options.stillImageFrameRate,
+                options.stillImageDuration ?? Infinity,
             );
             return new WrappedInput(
                 null,
-                options?.stillImageFrameRate ?? 30,
-                options?.stillImageDuration ?? null,
+                options.stillImageFrameRate,
+                options.stillImageDuration ?? null,
                 [],
                 sink,
                 image.width,
                 image.height,
+                true,
             );
         }
         const input = new Input({
@@ -128,7 +151,7 @@ export class WrappedInput {
 
 
         let frameRate = null;
-        if (options?.calculateFrameRate) {
+        if (options.calculateFrameRate) {
             // TODO: perform this calculation ourselves to get an idea of whether the video has a variable framerate
             const packetStats = await videoTrack.computePacketStats(100);
             frameRate = packetStats.averagePacketRate;
@@ -143,6 +166,7 @@ export class WrappedInput {
             videoSampleSink,
             videoTrack.codedWidth,
             videoTrack.codedHeight,
+            false,
         );
     }
 
@@ -150,8 +174,14 @@ export class WrappedInput {
         return this._audioTracks;
     }
 
-    get frameRate() {
+    get frameRate(): number | null {
         return this._frameRate;
+    }
+
+    set frameRate(frameRate: number) {
+        if (!this.isStillImage || this._frameRate === frameRate) return;
+        (this._videoSampleSink as StillImageSink).frameRate = this._frameRate = frameRate;
+        this.dispatchEvent(new FrameRateChangeEvent(frameRate));
     }
 
     get videoSink() {
