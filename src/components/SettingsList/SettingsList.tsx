@@ -183,7 +183,11 @@ const Setting = (
             {innerWidget}
             {descriptor.kind === DescriptorKind.Boolean || descriptor.kind === DescriptorKind.Group ?
                 null :
-                <label className={style.settingLabel} id={labelId}>{descriptor.label}</label>}
+                <label
+                    className={style.settingLabel}
+                    id={labelId}
+                    title={descriptor.description ?? undefined}
+                >{descriptor.label}</label>}
         </div>
     );
 };

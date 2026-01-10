@@ -325,6 +325,20 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         await queueSeek();
     }
 
+    async currentFrameAsPNG() {
+        const frame = this.currentFrame;
+        if (!frame) return;
+        const frameNum = this.frameRate * frame.timestamp;
+        const getFrame = await this.effectPool.processFrame({
+            frame: frame.toVideoFrame(),
+            frameNum,
+            padToEven: false,
+            ...this.pipelineSettings,
+        }, 'pngBlob');
+        const pngBlob = await getFrame();
+        return pngBlob;
+    }
+
     private startPlaying() {
         const ac = this.playbackAbortController;
         const signal = ac.signal;
@@ -490,10 +504,9 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             }
 
             const frame = this.currentFrame;
-            const videoFrame = frame.toVideoFrame();
             const frameNum = this.frameRate * frame.timestamp;
             const getFrame = await this.effectPool.processFrame({
-                frame: videoFrame,
+                frame: frame.toVideoFrame(),
                 frameNum,
                 padToEven: false,
                 ...this.pipelineSettings,

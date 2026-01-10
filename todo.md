@@ -2,7 +2,7 @@
   - [x] Adjustable framerate
   - [x] Adjustable duration
   - [x] Spinbox-based time control
-- [ ] "Copy frame" and "Save frame" buttons
+- [x] "Copy frame" and "Save frame" buttons
 - [ ] Image-sequence output in Chrome (the only browser with a directory picker)
 - [ ] OPFS-based preset manager?
 - [x] Video padding filter
@@ -23,11 +23,18 @@
   - Slower than native effect rendering
   - Slower encoding on Firefox and maybe Safari
   - Must stay "tabbed in" on mobile to avoid the tab being suspended
+  - Phone videos will be really janky. Not a web thing specifically, but this is the first version that works on phones
 - [ ] License list
 - [ ] Documentation
 - [ ] Tooltip component (with togglable "sticky" help icon) for inline help
-- [ ] Handle non-square PAR
 - [ ] Show codec details in render job widget
 - [ ] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
 - [ ] Actually investigate why rendering is so slow on Firefox
 - [x] Try to reduce code size (why is there a 500KB data section?)
+- [ ] Settings undo/redo
+- [ ] Handle non-square PAR
+- [ ] Shot on an iPhone(tm) woooo baby
+  - [ ] Some(?) .mov files don't seek
+  - [ ] EXIF rotation
+  - [ ] Negative audio timestamps cause errors
+  - [ ] Variable framerate? :(

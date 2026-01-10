@@ -8,6 +8,7 @@ export type EffectWorker = RpcDispatcher<WorkerSchema>;
 const messageMap = {
     'render-frame-to-bitmap': 'rendered-frame-to-bitmap',
     'render-frame-to-videoframe': 'rendered-frame-to-videoframe',
+    'render-frame-to-png': 'rendered-frame-to-png',
     'init': 'initialized',
 } as const;
 type Runner<T> = (cb: (worker: EffectWorker) => Promise<T>) => Promise<T>;
@@ -111,6 +112,9 @@ export default class EffectWorkerPool {
                     break;
                 case 'videoframe':
                     renderName = 'render-frame-to-videoframe' as const;
+                    break;
+                case 'pngBlob':
+                    renderName = 'render-frame-to-png' as const;
                     break;
             }
             const renderedFrame = await worker.send(renderName, {

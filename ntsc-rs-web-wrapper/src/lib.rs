@@ -32,38 +32,6 @@ impl NtscConfigurator {
     pub fn new() -> Self {
         Self(NtscEffectFullSettings::default())
     }
-
-    pub fn apply(
-        &self,
-        width: usize,
-        height: usize,
-        src: &[u8],
-        intermediate: &mut [f32],
-        dst: &mut [u8],
-        frame_num: usize,
-    ) {
-        let mut view = YiqView::from_parts(
-            intermediate,
-            (width, height),
-            self.0.use_field.to_yiq_field(frame_num),
-        );
-        view.set_from_strided_buffer::<Rgbx, u8, _>(
-            src,
-            BlitInfo::from_full_frame(width, height, width * 4),
-            (),
-        );
-        NtscEffect::from(&self.0).apply_effect_to_yiq(&mut view, frame_num, [1.0, 1.0]);
-        view.write_to_strided_buffer::<Rgbx, u8, _>(
-            dst,
-            BlitInfo::from_full_frame(width, height, width * 4),
-            DeinterlaceMode::Bob,
-            (),
-        );
-    }
-
-    pub fn buf_length_for(&self, width: usize, height: usize, frame_num: usize) -> usize {
-        YiqView::buf_length_for((width, height), self.0.use_field.to_yiq_field(frame_num))
-    }
 }
 
 #[wasm_bindgen]

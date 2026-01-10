@@ -6,6 +6,7 @@ import init, {
 
 import {postMessageFromWorker, type MessageFromWorker, type MessageToWorker} from './worker-rpc';
 import Queuetex from './async-queue';
+import encodePng from './encode-png';
 
 export type RenderFrame = {
     frame: VideoFrame,
@@ -49,16 +50,27 @@ export type WorkerSchema =
     }
     | {
         request: {
+            name: 'render-frame-to-png';
+            message: RenderFrame;
+        };
+        response: {
+            name: 'rendered-frame-to-png';
+            message: Blob;
+        };
+    }
+    | {
+        request: {
             name: 'update-settings';
             message: string;
         };
         response: never;
     };
 
+const wasmMutex = new Queuetex(null);
 const initPromise = init();
 const effectData = initPromise.then(() => {
     return {
-        effect: new Queuetex(new NtscEffectBuf()),
+        effect: new NtscEffectBuf(),
         settingsList: new NtscSettingsList(),
     };
 });
@@ -103,9 +115,22 @@ const listener = async(event: MessageEvent) => {
                 }
                 break;
             }
+            case 'render-frame-to-png': {
+                try {
+                    const data = await renderFrame(message.message, 'pngBlob');
+                    postMessageFromWorker<WorkerSchema>({
+                        type: 'rendered-frame-to-png',
+                        message: data,
+                        originId: message.id,
+                    });
+                } finally {
+                    message.message.frame.close();
+                }
+                break;
+            }
             case 'update-settings': {
                 const {effect, settingsList} = await effectData;
-                await effect.withValue(effect => {
+                await wasmMutex.withValue(() => {
                     effect.setEffectSettings(settingsList.settingsFromJSON(message.message));
                 });
                 break;
@@ -113,7 +138,7 @@ const listener = async(event: MessageEvent) => {
             case 'close': {
                 removeEventListener('message', listener);
                 const {effect, settingsList} = await effectData;
-                void effect.withValue(effect => effect.free());
+                void wasmMutex.withValue(() => effect.free());
                 settingsList.free();
                 break;
             }
@@ -130,6 +155,7 @@ const listener = async(event: MessageEvent) => {
 export type Formats = {
     imagebitmap: ImageBitmap,
     videoframe: VideoFrame,
+    pngBlob: Blob,
 };
 
 const renderFrame = async<F extends keyof Formats>(
@@ -137,7 +163,7 @@ const renderFrame = async<F extends keyof Formats>(
     format: F,
 ): Promise<Formats[F]> => {
     const {effect} = await effectData;
-    return await effect.withValue(async effect => {
+    return await wasmMutex.withValue(async() => {
         const visibleRect = frame.visibleRect!;
         let outputWidth, outputHeight;
         if (resizeHeight !== null) {
@@ -191,6 +217,13 @@ const renderFrame = async<F extends keyof Formats>(
                     timestamp: frame.timestamp,
                     duration: frame.duration ?? undefined,
                 }) as Formats[F];
+            case 'pngBlob': {
+                // We can't just call toBlob on the canvas because, as mentioned above, Firefox randomizes the pixel
+                // data slightly before returning it. Instead, we have to ship an entire PNG encoder. Feeling
+                // "private" yet?
+                const blob = await encodePng(new ImageData(dstFrameClamped, paddedWidth, paddedHeight), false);
+                return blob as Formats[F];
+            }
         }
     });
 };

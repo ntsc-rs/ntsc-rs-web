@@ -1,4 +1,4 @@
-const UNITS = [' bytes', 'KB', 'MB', 'GB'];
+const UNITS = ['bytes', 'KB', 'MB', 'GB'];
 const DIVISOR = 1000;
 
 const formatFileSize = (bytes: number): string => {

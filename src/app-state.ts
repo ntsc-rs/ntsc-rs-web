@@ -14,7 +14,6 @@ import RenderJob, {StateChangeEvent} from './util/render-job';
 import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 await init();
-//await initThreadPool(8);
 
 export type EffectPreviewMode = 'enabled' | 'disabled';
 
@@ -224,7 +223,7 @@ setPanicHook();
 export const SETTINGS_LIST = new NtscSettingsList();
 export const SETTINGS_DESCRIPTORS = JSON.parse(SETTINGS_LIST.getSettingsList()) as SettingDescriptor[];
 
-type SavedState = {
+type SavedState = Partial<{
     settings: Record<string, number | boolean>,
     resizeEnabled: boolean,
     resizeHeight: number,
@@ -235,8 +234,7 @@ type SavedState = {
     renderVideoCodec: AppVideoCodec | null,
     renderVideoBitrate: number,
     renderStillImageDuration: number,
-    version: 1,
-};
+}> & {version: 1};
 
 const loadState = (store: AppState) => {
     const savedStateJson = localStorage.getItem('settings');
@@ -245,27 +243,28 @@ const loadState = (store: AppState) => {
         const savedState = JSON.parse(savedStateJson) as SavedState;
         if (savedState.version !== 1) return;
 
-        for (const settingId in savedState.settings) {
-            if (
-                !Object.prototype.hasOwnProperty.call(savedState.settings, settingId) ||
-                !Object.prototype.hasOwnProperty.call(store.settings, settingId)
-            ) {
-                continue;
-            }
-
-            store.settings[settingId].value = savedState.settings[settingId];
+        if (savedState.settings) {
+            store.settingsFromObject(savedState.settings);
         }
 
-        store.resizeEnabled.value = savedState.resizeEnabled;
-        store.resizeHeight.value = savedState.resizeHeight;
-        store.resizeFilter.value = savedState.resizeFilter;
-        store.stillImageFrameRate.value = savedState.stillImageFrameRate;
-        store.mute.value = savedState.mute;
-        store.volume.value = savedState.volume;
-        store.renderVideoCodec.value = savedState.renderVideoCodec;
-        store.renderVideoBitrate.value = savedState.renderVideoBitrate;
-        store.renderStillImageDuration.value = savedState.renderStillImageDuration;
-    } catch {
+        for (const key of [
+            'resizeEnabled',
+            'resizeHeight',
+            'resizeFilter',
+            'stillImageFrameRate',
+            'mute',
+            'volume',
+            'renderVideoCodec',
+            'renderVideoBitrate',
+            'renderStillImageDuration',
+        ] as const) {
+            if (typeof savedState[key] !== 'undefined') {
+                store[key].value = savedState[key];
+            }
+        }
+    } catch (err) {
         // Swallow errors here
+        // eslint-disable-next-line no-console
+        console.warn('Failed to load saved app state:', err);
     }
 };

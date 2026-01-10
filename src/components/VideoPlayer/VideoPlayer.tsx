@@ -21,6 +21,7 @@ import {formatTimestamp} from '../../util/format-timestamp';
 import classNames from 'clsx';
 import Loader from '../Loader/Loader';
 import {GLOBAL_WORKER_POOL} from '../../util/effect-worker-pool';
+import saveToFile from '../../util/save-to-file';
 
 type MediaPlayerState =
     {state: 'not_loaded'} |
@@ -183,11 +184,32 @@ const FrameRateAdjuster  = ({player}: {player: MediaPlayer}) => {
 
 const VideoInfoBar = ({player}: {player: MediaPlayer | null}) => {
     const appState = useAppState();
+    const addErrorToast = useAddErrorToast();
     const mediaFile = appState.mediaBlob;
 
     const closeVideo = useCallback(() => {
         mediaFile.value = null;
-    }, []);
+    }, [mediaFile]);
+
+    const copyFrame = useCallback(() => {
+        if (!player) return;
+        const curPlayer = player;
+        (async() => {
+            const blob = await player.currentFrameAsPNG();
+            if (curPlayer !== player || !blob) return;
+            await navigator.clipboard.write([new ClipboardItem({[blob.type]: blob})]);
+        })().catch(err => addErrorToast('Failed to copy frame', err));
+    }, [player, addErrorToast]);
+
+    const saveFrame = useCallback(() => {
+        if (!player) return;
+        const curPlayer = player;
+        (async() => {
+            const blob = await player.currentFrameAsPNG();
+            if (curPlayer !== player || !blob) return;
+            saveToFile('frame.png', blob);
+        })().catch(err => addErrorToast('Failed to save frame', err));
+    }, [player, addErrorToast]);
 
     if (mediaFile.value === null) return null;
 
@@ -195,6 +217,8 @@ const VideoInfoBar = ({player}: {player: MediaPlayer | null}) => {
         <div className={style.videoInfoBar}>
             <div className={style.videoFileName}>{mediaFile.value.name}</div>
             {player && <div className={style.videoInfo}>
+                <IconButton type="copy" title="Copy frame" onClick={copyFrame} />
+                <IconButton type="download" title="Save frame" onClick={saveFrame} />
                 <div className={style.videoResolution}>{player.width}x{player.height}</div>
                 <div className={style.videoFramerate}>{
                     player.input.isStillImage ?

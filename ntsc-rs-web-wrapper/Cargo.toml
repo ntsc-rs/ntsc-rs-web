@@ -12,8 +12,6 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 wasm-bindgen = "0.2.84"
-#wasm-bindgen-rayon = "1.2"
-rayon = "1.8"
 fast_image_resize = { version = "5.4", default-features = false }
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
@@ -21,9 +19,8 @@ fast_image_resize = { version = "5.4", default-features = false }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
-web-sys = { version = "0.3.83", features = ["console", "ImageData"] }
+web-sys = { version = "0.3.83", features = ["console"] }
 ntscrs = { path = "../../ntscrs/crates/ntscrs", default-features = false }
-tinyjson = "2.5.1"
 sval = { version = "2.14.1", features = ["std"] }
 sval_json = { version = "2.14.1", features = ["std"] }
 
@@ -39,4 +36,4 @@ panic = "abort"
 lto = "fat"
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-O4', '-g']
+wasm-opt = ['-O4']
