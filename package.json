@@ -6,14 +6,13 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"lint": "eslint",
-        "build-aac-codec": "docker build -t ntsc_rs_web_aac ./aac-codec && docker run --rm -v ./aac-codec:/src -u $(id -u):$(id -g) -it ntsc_rs_web_aac /bin/bash -c 'cd /src && ./build.sh'"
+		"build-aac-codec": "docker build -t ntsc_rs_web_aac ./aac-codec && docker run --rm -v ./aac-codec:/src -u $(id -u):$(id -g) -it ntsc_rs_web_aac /bin/bash -c 'cd /src && ./build.sh'"
 	},
 	"dependencies": {
 		"@floating-ui/dom": "^1.7.4",
 		"@preact/signals": "^1.3.0",
 		"clsx": "^2.1.1",
 		"mediabunny": "^1.27.2",
-		"ntsc-rs-web-wrapper": "file:ntsc-rs-web-wrapper/pkg",
 		"preact": "^10.22.1"
 	},
 	"devDependencies": {

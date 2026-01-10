@@ -1,12 +1,11 @@
 import style from './style.module.scss';
 
 import {Signal} from '@preact/signals';
-import {DescriptorKind, SettingDescriptor} from 'ntsc-rs-web-wrapper';
+import {DescriptorKind, ResizeFilter, SettingDescriptor} from '../../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import {useCallback, useId} from 'preact/hooks';
 import {SETTINGS_DESCRIPTORS, SETTINGS_LIST, useAppState} from '../../app-state';
 import {CheckboxToggle, Dropdown, Slider, SpinBox} from '../Widgets/Widgets';
 import classNames from 'clsx';
-import {ResizeFilter} from 'ntsc-rs-web-wrapper';
 import {IconButton} from '../Icon/Icon';
 import {useAddErrorToast} from '../Toast/Toast';
 import saveToFile from '../../util/save-to-file';

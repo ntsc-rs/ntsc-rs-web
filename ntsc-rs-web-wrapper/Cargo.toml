@@ -2,7 +2,7 @@
 name = "ntsc-rs-web-wrapper"
 version = "0.1.0"
 authors = ["va_erie"]
-edition = "2018"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -33,7 +33,4 @@ wasm-bindgen-test = "0.3.34"
 [profile.release]
 opt-level = 3
 panic = "abort"
-lto = "fat"
-
-[package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-O4']
+lto = "thin"

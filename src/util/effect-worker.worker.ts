@@ -2,7 +2,7 @@ import init, {
     NtscSettingsList,
     ResizeFilter,
     NtscEffectBuf,
-} from 'ntsc-rs-web-wrapper';
+} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 
 import {postMessageFromWorker, type MessageFromWorker, type MessageToWorker} from './worker-rpc';
 import Queuetex from './async-queue';

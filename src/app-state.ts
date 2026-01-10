@@ -8,7 +8,7 @@ import init, {
     SettingDescriptor,
     ResizeFilter,
     setPanicHook,
-} from 'ntsc-rs-web-wrapper';
+} from '../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import throttle from './util/throttle';
 import RenderJob, {StateChangeEvent} from './util/render-job';
 import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';

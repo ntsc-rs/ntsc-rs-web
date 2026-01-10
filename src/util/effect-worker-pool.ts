@@ -1,7 +1,7 @@
 import {Formats, WorkerSchema} from './effect-worker.worker';
 import Queue from './queue';
 import RpcDispatcher from './worker-rpc';
-import {ResizeFilter} from 'ntsc-rs-web-wrapper';
+import {ResizeFilter} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 
 export type EffectWorker = RpcDispatcher<WorkerSchema>;
 
