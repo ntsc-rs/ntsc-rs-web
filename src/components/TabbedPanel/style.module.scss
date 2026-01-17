@@ -11,21 +11,29 @@
     gap: 0.5rem;
     background-color: theme.$base-color-tertiary;
     padding: 0.5rem;
+    padding-bottom: 0;
+    border-bottom: 1px solid theme.$divider;
 }
 
 .tab {
-    @include theme.bg-fade;
-    padding: 0.5rem;
-    background-color: theme.$base-color-secondary;
-    border-radius: theme.$radius;
+    @include theme.fade(background-color, border-color);
+    background-clip: padding-box;
+
+    padding: 0.325rem 0.75rem;
+    border-top-left-radius: theme.$radius;
+    border-top-right-radius: theme.$radius;
     cursor: pointer;
+    border: 1px solid transparent;
+    margin-bottom: -1px;
 
     &:hover {
-        background-color: theme.$primary-hover;
+        background-color: theme.$toggle-hover;
     }
 
     &.active-tab {
-        background-color: theme.$primary;
+        background-color: theme.$base-color-primary;
+        border: 1px solid theme.$divider;
+        border-bottom-color: theme.$base-color-primary;
     }
 }
 

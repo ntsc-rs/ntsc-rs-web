@@ -277,6 +277,7 @@ export const ImperativeSpinBox = ({
             aria-disabled={disabled}
             style={{
                 width: width ? `calc(${width}ch + var(--padding-right) * 2 + 1rem)` : undefined,
+                flexShrink: width ? '0' : undefined,
             }}
         >
             <input
@@ -333,6 +334,7 @@ export const Slider = ({
     step = 1,
     detents,
     disabled,
+    vertical,
     className,
     id,
     'aria-labelledby': labelledBy,
@@ -343,6 +345,7 @@ export const Slider = ({
     step?: number | 'any';
     detents?: number[];
     disabled?: boolean;
+    vertical?: boolean;
     className?: string;
     id?: string;
     'aria-labelledby'?: string,
@@ -360,6 +363,7 @@ export const Slider = ({
         step={step}
         detents={detents}
         disabled={disabled}
+        vertical={vertical}
         className={className}
         id={id}
         aria-labelledby={labelledBy}
@@ -376,6 +380,7 @@ export const ImperativeSlider = ({
     step = 1,
     detents,
     disabled,
+    vertical,
     className,
     id,
     'aria-labelledby': labelledBy,
@@ -387,6 +392,7 @@ export const ImperativeSlider = ({
     step?: number | 'any';
     detents?: number[];
     disabled?: boolean;
+    vertical?: boolean;
     className?: string;
     id?: string;
     'aria-labelledby'?: string,
@@ -420,7 +426,7 @@ export const ImperativeSlider = ({
 
     return (
         <input
-            className={classNames(slider.slider, className)}
+            className={classNames(slider.slider, className, vertical && slider.vertical)}
             type="range"
             min={min}
             max={max}
@@ -436,25 +442,33 @@ export const ImperativeSlider = ({
     );
 };
 
-export const ToggleIcon = ({type, title, toggled, innerRef, className}: {
+export const ToggleIcon = ({type, title, toggled, disabled, innerRef, className}: {
     type: IconType;
     title: string;
     toggled: Signal<boolean>;
+    disabled?: boolean;
     innerRef?: Ref<HTMLButtonElement>;
     className?: string;
 }) => {
     const handleClick = useCallback(() => {
-        toggled.value = !toggled.value;
-    }, [toggled]);
+        if (!disabled) toggled.value = !toggled.value;
+    }, [toggled, disabled]);
     return (
         <button
-            className={classNames(style.iconButton, style.toggleIcon, toggled.value && style.toggledOn, className)}
+            className={classNames(
+                style.iconButton,
+                style.toggleIcon,
+                toggled.value && style.toggledOn,
+                className,
+                disabled && style.disabled,
+            )}
             onClick={handleClick}
             role="checkbox"
             aria-checked={toggled.value}
             title={title}
             ref={innerRef}
             tabindex={0}
+            disabled={disabled}
         >
             <Icon type={type} title={title} />
         </button>

@@ -1,9 +1,9 @@
 import style from './style.module.scss';
 
-import {useCallback, useEffect, useLayoutEffect, useMemo} from 'preact/hooks';
-import {useAppState} from '../../app-state';
+import {MutableRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef} from 'preact/hooks';
+import {EffectPreviewMode, useAppState} from '../../app-state';
 import MediaPlayer, {FrameEvent, StateChangeEvent} from '../../util/media-player';
-import {useComputed, useSignal, useSignalEffect} from '@preact/signals';
+import {batch, Signal, useComputed, useSignal, useSignalEffect} from '@preact/signals';
 import {
     CheckboxToggle,
     ImperativeSlider,
@@ -12,16 +12,21 @@ import {
     Slider,
     SpinBox,
     timestampSpinboxDisplay,
+    ToggleIcon,
 } from '../Widgets/Widgets';
 import Icon, {IconButton} from '../Icon/Icon';
 import showOpenFilePicker from '../../util/file-picker';
 import {useAddErrorToast} from '../Toast/Toast';
-import {TargetedEvent} from 'preact';
+import {CSSProperties, TargetedEvent} from 'preact';
 import {formatTimestamp} from '../../util/format-timestamp';
 import classNames from 'clsx';
 import Loader from '../Loader/Loader';
 import {GLOBAL_WORKER_POOL} from '../../util/effect-worker-pool';
 import saveToFile from '../../util/save-to-file';
+import useMediaQuery from '../../util/use-media-query';
+import useFloating from '../../util/floating';
+import {ComputePositionConfig, offset, shift, size} from '@floating-ui/dom';
+import {Overlay} from '../Overlay/Overlay';
 
 type MediaPlayerState =
     {state: 'not_loaded'} |
@@ -40,8 +45,9 @@ const VideoPlayer = () => {
             const playerPromise = MediaPlayer.create(mediaBlob, GLOBAL_WORKER_POOL, {
                 resizeHeight: appState.resizeHeight.value,
                 resizeFilter: appState.resizeFilter.value,
-                effectEnabled: appState.effectPreviewMode.value === 'enabled',
+                effectEnabled: appState.effectPreviewMode.value !== 'disabled',
                 effectSettings: appState.settingsAsObject.value,
+                outputRect: appState.previewSplitRectAsObject.value,
             }, appState.stillImageFrameRate.value).then(player => {
                 mediaPlayer.value = {state: 'loaded', player};
                 return player;
@@ -149,6 +155,8 @@ const MediaDropZone = () => {
         });
     }, []);
 
+    const isTouch = useMediaQuery('(pointer: coarse)');
+
     return (
         <div
             className={classNames(style.mediaDropZone, isDragging.value && style.dragging)}
@@ -160,7 +168,7 @@ const MediaDropZone = () => {
 
         >
             <header>No media loaded</header>
-            <div>Drag files here or click to browse files</div>
+            <div>Drag files here or {isTouch.value ? 'tap' : 'click'} to browse files</div>
         </div>
     );
 };
@@ -216,9 +224,9 @@ const VideoInfoBar = ({player}: {player: MediaPlayer | null}) => {
     return (
         <div className={style.videoInfoBar}>
             <div className={style.videoFileName}>{mediaFile.value.name}</div>
+            <IconButton type="copy" title="Copy frame" onClick={copyFrame} disabled={player === null} />
+            <IconButton type="download" title="Save frame" onClick={saveFrame} disabled={player === null} />
             {player && <div className={style.videoInfo}>
-                <IconButton type="copy" title="Copy frame" onClick={copyFrame} />
-                <IconButton type="download" title="Save frame" onClick={saveFrame} />
                 <div className={style.videoResolution}>{player.width}x{player.height}</div>
                 <div className={style.videoFramerate}>{
                     player.input.isStillImage ?
@@ -227,6 +235,264 @@ const VideoInfoBar = ({player}: {player: MediaPlayer | null}) => {
                 } fps</div>
             </div>}
             <IconButton type="close" title="Close" onClick={closeVideo} />
+        </div>
+    );
+};
+
+const DesktopVideoControls = ({
+    disabled,
+    hasAudio,
+    playing,
+    mute,
+    volume,
+    zoomFit,
+    zoomPercent,
+    effectPreviewMode,
+    playPause,
+    toggleMute,
+}: {
+    disabled: boolean,
+    hasAudio: boolean,
+    playing: Signal<boolean>,
+    mute: Signal<boolean>,
+    volume: Signal<number>,
+    zoomFit: Signal<boolean>,
+    zoomPercent: Signal<number>,
+    effectPreviewMode: Signal<EffectPreviewMode>,
+    playPause: () => void,
+    toggleMute: () => void,
+}) => {
+    return (
+        <div className={classNames(style.playerControls, disabled && style.disabled)}>
+            <div className={style.timeControls}>
+                <IconButton
+                    type={playing.value ? 'pause' : 'play'}
+                    title={playing.value ? 'Pause' : 'Play'}
+                    onClick={playPause}
+                    disabled={disabled}
+                />
+            </div>
+            <div className={style.zoomControls}>
+                <Icon
+                    type="search"
+                    title="Zoom"
+                />
+                <SpinBox
+                    value={zoomPercent}
+                    min={0}
+                    max={800}
+                    step={1}
+                    smartAim={50}
+                    disabled={zoomFit.value || disabled}
+                />
+                <CheckboxToggle
+                    label="Fit"
+                    checked={zoomFit}
+                    disabled={disabled}
+                    title="Fit the video within the pane, up to 100% zoom"
+                />
+            </div>
+            <div className={style.volumeControls}>
+                <IconButton
+                    type={mute.value ? 'speaker-mute' : 'speaker'}
+                    title={mute.value ? 'Unmute' : 'Mute'}
+                    onClick={toggleMute}
+                    disabled={disabled || !hasAudio}
+                />
+                <Slider
+                    value={volume}
+                    min={0}
+                    max={125}
+                    step={1}
+                    disabled={disabled || !hasAudio}
+                    detents={[100]}
+                    className={style.volumeSlider}
+                />
+                <SpinBox
+                    value={volume}
+                    min={0}
+                    max={125}
+                    step={1}
+                    disabled={disabled || !hasAudio}
+                    width={3}
+                />
+            </div>
+            <div className={style.effectEnabled}>
+                <Icon
+                    type="effect"
+                    title="Effect preview"
+                />
+                <SelectableButton currentValue={effectPreviewMode} value="enabled" disabled={disabled}>
+                    Enable
+                </SelectableButton>
+                <SelectableButton currentValue={effectPreviewMode} value="disabled" disabled={disabled}>
+                    Disable
+                </SelectableButton>
+                <SelectableButton currentValue={effectPreviewMode} value="split" disabled={disabled}>
+                    Split
+                </SelectableButton>
+            </div>
+        </div>
+    );
+};
+
+const popupMiddleware = (): ComputePositionConfig => ({
+    placement: 'top',
+    middleware: [
+        offset(8),
+        shift({padding: 8}),
+        size({
+            apply({availableHeight, elements}) {
+                elements.floating.style.maxHeight = `${availableHeight}px`;
+            },
+            padding: 24,
+        }),
+    ],
+});
+
+const MobileVideoControls = ({
+    disabled,
+    hasAudio,
+    playing,
+    mute,
+    volume,
+    zoomFit,
+    zoomPercent,
+    effectPreviewMode,
+    playPause,
+    toggleMute,
+}: {
+    disabled: boolean,
+    hasAudio: boolean,
+    playing: Signal<boolean>,
+    mute: Signal<boolean>,
+    volume: Signal<number>,
+    zoomFit: Signal<boolean>,
+    zoomPercent: Signal<number>,
+    effectPreviewMode: Signal<EffectPreviewMode>,
+    playPause: () => void,
+    toggleMute: () => void,
+}) => {
+    const {reference: zoomReference, floating: zoomFloating} = useFloating(popupMiddleware);
+    const zoomOpen = useSignal(false);
+    let zoomSlider = null;
+    if (zoomOpen.value) {
+        zoomSlider = <div className={style.sliderPopup} ref={zoomFloating}>
+            <Slider
+                value={zoomPercent}
+                min={0}
+                max={800}
+                step={1}
+                disabled={zoomFit.value || disabled}
+                vertical
+                detents={[100, 125, 150, 200, 300, 400]}
+                className={style.verticalSlider}
+            />
+            <SpinBox
+                value={zoomPercent}
+                min={0}
+                max={800}
+                step={1}
+                smartAim={50}
+                disabled={zoomFit.value || disabled}
+                className={style.verticalSpinbox}
+            />
+            <CheckboxToggle
+                label="Fit"
+                checked={zoomFit}
+                disabled={disabled}
+                title="Fit the video within the pane, up to 100% zoom"
+            />
+        </div>;
+    }
+
+    const {reference: previewModeReference, floating: previewModeFloating} = useFloating(popupMiddleware);
+    const previewModeOpen = useSignal(false);
+    let previewModePopup = null;
+    if (previewModeOpen.value) {
+        previewModePopup = <div
+            className={classNames(style.sliderPopup, style.previewModePopup)}
+            ref={previewModeFloating}
+        >
+            <SelectableButton currentValue={effectPreviewMode} value="enabled" disabled={disabled}>
+                Enable
+            </SelectableButton>
+            <SelectableButton currentValue={effectPreviewMode} value="disabled" disabled={disabled}>
+                Disable
+            </SelectableButton>
+            <SelectableButton currentValue={effectPreviewMode} value="split" disabled={disabled}>
+                Split
+            </SelectableButton>
+        </div>;
+    }
+
+    const lastOpened = useRef<'zoom' | 'previewMode'>(null);
+    useSignalEffect(() => {
+        if (zoomOpen.value && lastOpened.current !== 'zoom') {
+            batch(() => {previewModeOpen.value = false;});
+            lastOpened.current = 'zoom';
+        }
+        if (previewModeOpen.value && lastOpened.current !== 'previewMode') {
+            batch(() => {zoomOpen.value = false;});
+            lastOpened.current = 'previewMode';
+        }
+    });
+
+    return (
+        <div className={classNames(style.playerControls, style.mobilePlayerControls, disabled && style.disabled)}>
+            <div className={style.timeControls}>
+                <IconButton
+                    type={playing.value ? 'pause' : 'play'}
+                    title={playing.value ? 'Pause' : 'Play'}
+                    onClick={playPause}
+                    disabled={disabled}
+                />
+            </div>
+            <div className={style.volumeControls}>
+                <IconButton
+                    type={mute.value ? 'speaker-mute' : 'speaker'}
+                    title={mute.value ? 'Unmute' : 'Mute'}
+                    onClick={toggleMute}
+                    disabled={disabled || !hasAudio}
+                />
+                <Slider
+                    value={volume}
+                    min={0}
+                    max={125}
+                    step={1}
+                    disabled={disabled || !hasAudio}
+                    detents={[100]}
+                    className={style.volumeSlider}
+                />
+                <SpinBox
+                    value={volume}
+                    min={0}
+                    max={125}
+                    step={1}
+                    disabled={disabled || !hasAudio}
+                    width={3}
+                />
+            </div>
+            <div className={style.togglableControls}>
+                <ToggleIcon
+                    type="search"
+                    title="Zoom"
+                    toggled={zoomOpen}
+                    disabled={disabled}
+                    innerRef={zoomReference}
+                />
+                <ToggleIcon
+                    type="effect"
+                    title="Effect preview"
+                    toggled={previewModeOpen}
+                    disabled={disabled}
+                    innerRef={previewModeReference}
+                />
+            </div>
+            <Overlay>
+                {zoomSlider}
+                {previewModePopup}
+            </Overlay>
         </div>
     );
 };
@@ -257,76 +523,37 @@ const VideoControls = ({player}: {player: MediaPlayer | null}) => {
     }, [player]);
     useLayoutEffect(() => {
         if (!player) return;
-        player.effectEnabled = effectPreviewMode.value === 'enabled';
+        player.effectEnabled = effectPreviewMode.value !== 'disabled';
     }, [effectPreviewMode.value, player]);
 
-    return (
-        <div className={classNames(style.playerControls, player === null && style.disabled)}>
-            <div className={style.timeControls}>
-                <IconButton
-                    type={playing.value ? 'pause' : 'play'}
-                    title={playing.value ? 'Pause' : 'Play'}
-                    onClick={playPause}
-                    disabled={player === null}
-                />
-            </div>
-            <div className={style.zoomControls}>
-                <Icon
-                    type="search"
-                    title="Zoom"
-                />
-                <SpinBox
-                    value={zoomPercent}
-                    min={0}
-                    max={800}
-                    step={1}
-                    smartAim={50}
-                    disabled={zoomFit.value || player === null}
-                />
-                <CheckboxToggle
-                    label="Fit"
-                    checked={zoomFit}
-                    disabled={player === null}
-                    title="Fit the video within the pane, up to 100% zoom"
-                />
-            </div>
-            <div className={style.volumeControls}>
-                <IconButton
-                    type={mute.value ? 'speaker-mute' : 'speaker'}
-                    title={mute.value ? 'Unmute' : 'Mute'}
-                    onClick={toggleMute}
-                    disabled={player === null || !player.hasAudio}
-                />
-                <Slider
-                    value={volume}
-                    min={0}
-                    max={125}
-                    step={1}
-                    disabled={player === null || !player.hasAudio}
-                    detents={[100]}
-                />
-                <SpinBox
-                    value={volume}
-                    min={0}
-                    max={125}
-                    step={1}
-                    disabled={player === null || !player.hasAudio}
-                />
-            </div>
-            <div className={style.effectEnabled}>
-                <Icon
-                    type="effect"
-                    title="Effect preview"
-                />
-                <SelectableButton currentValue={effectPreviewMode} value="enabled" disabled={player === null}>
-                    Enable
-                </SelectableButton>
-                <SelectableButton currentValue={effectPreviewMode} value="disabled" disabled={player === null}>
-                    Disable
-                </SelectableButton>
-            </div>
-        </div>
-    );
+    const mediaQuery = useMediaQuery('(width <= 40rem)');
+    if (mediaQuery.value) {
+        return <MobileVideoControls
+            disabled={player === null}
+            hasAudio={player?.hasAudio ?? false}
+            playing={playing}
+            mute={mute}
+            volume={volume}
+            zoomFit={zoomFit}
+            zoomPercent={zoomPercent}
+            effectPreviewMode={effectPreviewMode}
+            playPause={playPause}
+            toggleMute={toggleMute}
+        />;
+    }
+
+    return <DesktopVideoControls
+        disabled={player === null}
+        hasAudio={player?.hasAudio ?? false}
+        playing={playing}
+        mute={mute}
+        volume={volume}
+        zoomFit={zoomFit}
+        zoomPercent={zoomPercent}
+        effectPreviewMode={effectPreviewMode}
+        playPause={playPause}
+        toggleMute={toggleMute}
+    />;
 };
 
 const VideoScrubber = ({player}: {player: MediaPlayer}) => {
@@ -386,9 +613,11 @@ const VideoScrubber = ({player}: {player: MediaPlayer}) => {
 };
 
 const VideoPaneInner = ({player}: {player: MediaPlayer}) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
     const canvasCallbackRef = useCallback((canvas: HTMLCanvasElement | null) => {
-        player.canvas = canvas;
+        player.canvas = canvasRef.current = canvas;
     }, [player]);
+    const wrapperRef = useRef<HTMLDivElement>(null);
 
     const appState = useAppState();
     // This has to be a useLayoutEffect to avoid a flash of incorrectly-sized video
@@ -401,28 +630,114 @@ const VideoPaneInner = ({player}: {player: MediaPlayer}) => {
     useLayoutEffect(() => {
         player.effectSettings = appState.settingsAsObject.value;
     }, [appState.settingsAsObject.value]);
+    useLayoutEffect(() => {
+        player.outputRect = appState.previewSplitRectAsObject.value;
+    }, [appState.previewSplitRectAsObject.value]);
 
-    const zoomStyle = useMemo(() => {
+    const viewportSize = useRef({blockSize: 0, inlineSize: 0});
+    const resizeCanvas = useCallback(() => {
+        if (!canvasRef.current) return;
+
+        const canvas = canvasRef.current;
+        const canvasStyle: CSSProperties = {};
         if (appState.zoomFit.value) {
-            return {
-                maxWidth: '100%',
-                maxHeight: '100%',
-            };
+            let clampedWidth = canvas.width;
+            let clampedHeight = canvas.height;
+            if (viewportSize.current.blockSize < canvas.height) {
+                clampedHeight = viewportSize.current.blockSize;
+                clampedWidth = (viewportSize.current.blockSize * canvas.width) / canvas.height;
+            }
+            if (viewportSize.current.inlineSize < canvas.width) {
+                clampedWidth = viewportSize.current.inlineSize;
+                clampedHeight = (viewportSize.current.inlineSize * canvas.height) / canvas.width;
+            }
+            canvasStyle.width = `${clampedWidth}px`;
+            canvasStyle.height = `${clampedHeight}px`;
+            canvasStyle.imageRendering = '';
+        } else {
+            canvasStyle.width = `${appState.zoomPercent.value * 0.01 * canvas.width}px`;
+            canvasStyle.height = `${appState.zoomPercent.value * 0.01 * canvas.height}px`;
+            canvasStyle.imageRendering = appState.zoomPercent.value >= 200 ? 'crisp-edges' : 'auto';
         }
+        Object.assign(canvas.style, canvasStyle);
+    }, [canvasRef, appState.zoomFit, appState.zoomPercent]);
 
-        const zoomWidth = player.width * appState.zoomPercent.value * 0.01;
-        const zoomHeight = player.height * appState.zoomPercent.value * 0.01;
+    const viewportRef = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+        const viewport = viewportRef.current;
+        if (!viewport) return;
 
-        return {
-            width: `${zoomWidth}px`,
-            height: `${zoomHeight}px`,
-            imageRendering: appState.zoomPercent.value >= 200 ? 'crisp-edges' : 'auto',
+        const observer = new ResizeObserver(entries => {
+            if (!entries[0]) return;
+
+            const entry = entries[0];
+            viewportSize.current = entry.contentBoxSize[0];
+
+            resizeCanvas();
+        });
+        observer.observe(viewport);
+        return () => {
+            observer.disconnect();
         };
-    }, [appState.zoomFit.value, appState.zoomPercent.value, player]);
+    }, [viewportRef.current, viewportSize, appState.zoomFit, resizeCanvas]);
+    useLayoutEffect(() => {
+        resizeCanvas();
+    }, [appState.zoomFit.value, appState.zoomPercent.value, appState.effectPreviewMode.value === 'split']);
 
     return (
-        <canvas className={style.playerCanvas} ref={canvasCallbackRef} style={zoomStyle} />
+        <div className={style.videoViewport} ref={viewportRef}>
+            <div className={style.playerCanvasWrapper} ref={wrapperRef}>
+                <canvas className={style.playerCanvas} ref={canvasCallbackRef} />
+                {appState.effectPreviewMode.value === 'split' &&
+                    <SplitBar wrapperRef={wrapperRef} />}
+            </div>
+        </div>
     );
+};
+
+const SplitBar = ({wrapperRef}: {wrapperRef: MutableRef<HTMLDivElement | null>}) => {
+    const {previewSplitRect: previewSplitBounds} = useAppState();
+
+    const listeners = useRef<{
+        move: (...args: unknown[]) => void,
+        up: (...args: unknown[]) => void,
+    }>(null);
+    useEffect(() => {
+        return () => {
+            if (listeners.current) {
+                const {move, up} = listeners.current;
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', up);
+            }
+        };
+    }, []);
+    const onPointerDown = useCallback((event: TargetedEvent<HTMLDivElement, PointerEvent>) => {
+        const targetBounds = event.currentTarget.getBoundingClientRect();
+        const startingOffset = event.clientX - ((targetBounds.left + targetBounds.right) * 0.5);
+
+        const onMove = (event: PointerEvent) => {
+            if (!wrapperRef.current) return;
+            const bounds = wrapperRef.current.getBoundingClientRect();
+            const relativeX = (event.clientX - bounds.left - startingOffset) / bounds.width;
+            previewSplitBounds.right.value = Math.max(0, Math.min(relativeX, 1));
+        };
+
+        const onUp = () => {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+        };
+
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+    }, [wrapperRef]);
+
+    return <>
+        <div
+            className={style.splitBar}
+            style={{left: `calc(${previewSplitBounds.right.value * 100}% - 0.5rem)`}}
+            onPointerDown={onPointerDown}
+        />
+    </>;
 };
 
 export default VideoPlayer;

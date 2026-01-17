@@ -3,18 +3,15 @@
   - [x] Adjustable duration
   - [x] Spinbox-based time control
 - [x] "Copy frame" and "Save frame" buttons
-- [ ] Image-sequence output in Chrome (the only browser with a directory picker)
 - [ ] OPFS-based preset manager?
 - [x] Video padding filter
-- [ ] FFV1 via WASM?
 - [x] OPFS output (render jobs output to OPFS and have a "Save" button)
   - [x] Retain list of render jobs still in OPFS
-- [ ] Notify on render completion
 - [x] Resizable panel widget from Glypht
-- [ ] Portrait mode
-  - [ ] Figure out wrapping for the video controls
+- [x] Portrait mode
+  - [x] Figure out wrapping for the video controls
 - [x] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
-- [ ] Split-screen preview mode
+- [x] Split-screen preview mode
 - [x] Polyfill AAC encoder for Chrome (and apparently other browsers too)
 - [ ] Document limitations
   - No interlaced video
@@ -26,15 +23,26 @@
   - Phone videos will be really janky. Not a web thing specifically, but this is the first version that works on phones
 - [ ] License list
 - [ ] Documentation
-- [ ] Tooltip component (with togglable "sticky" help icon) for inline help
-- [ ] Show codec details in render job widget
 - [ ] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
-- [ ] Actually investigate why rendering is so slow on Firefox
+- [x] Actually investigate why rendering is so slow on Firefox
 - [x] Try to reduce code size (why is there a 500KB data section?)
 - [ ] Settings undo/redo
-- [ ] Handle non-square PAR
 - [ ] Shot on an iPhone(tm) woooo baby
   - [ ] Some(?) .mov files don't seek
   - [ ] EXIF rotation
   - [ ] Negative audio timestamps cause errors
   - [ ] Variable framerate? :(
+- [ ] Test in Safari
+- [ ] Keyboard shortcuts
+- [ ] Some sort of demo image or video
+- [ ] Drag and drop presets
+
+Can be deferred to later:
+- [ ] Image-sequence output in Chrome (the only browser with a directory picker)
+- [ ] FFV1 via WASM?
+- [ ] Tooltip component (with togglable "sticky" help icon) for inline help
+- [ ] Show codec details in render job widget
+- [ ] Handle non-square PAR
+- [ ] Pinch to zoom
+- [ ] Notify on render completion
+- [ ] The "unsupported media" error message should also let you drop files into it

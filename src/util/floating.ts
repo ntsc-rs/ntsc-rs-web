@@ -18,7 +18,7 @@ const useFloating = <T extends HTMLElement, U extends HTMLElement>(
         autoUpdateCleanup.current();
 
         if (floatingRef.current !== null && newReference !== null) {
-            autoUpdateCleanup.current = autoUpdate(newReference, floatingRef.current, onUpdate);
+            autoUpdateCleanup.current = autoUpdate(newReference, floatingRef.current, onUpdate, {animationFrame: true});
         }
     }, []);
 
@@ -28,7 +28,7 @@ const useFloating = <T extends HTMLElement, U extends HTMLElement>(
         autoUpdateCleanup.current();
 
         if (newFloating !== null && referenceRef.current !== null) {
-            autoUpdateCleanup.current = autoUpdate(referenceRef.current, newFloating, onUpdate);
+            autoUpdateCleanup.current = autoUpdate(referenceRef.current, newFloating, onUpdate, {animationFrame: true});
         }
     }, []);
 

@@ -15,7 +15,7 @@ import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 await init();
 
-export type EffectPreviewMode = 'enabled' | 'disabled';
+export type EffectPreviewMode = 'enabled' | 'disabled' | 'split';
 
 export type AppVideoCodec = 'avc' | 'vp8' | 'vp9' | 'av1';
 
@@ -38,6 +38,18 @@ export class AppState {
     zoomFit: Signal<boolean>;
     zoomPercent: Signal<number>;
     effectPreviewMode: Signal<EffectPreviewMode>;
+    previewSplitRect: {
+        top: Signal<number>,
+        bottom: Signal<number>,
+        left: Signal<number>,
+        right: Signal<number>,
+    };
+    previewSplitRectAsObject: ReadonlySignal<{
+        top: number,
+        bottom: number,
+        left: number,
+        right: number,
+    } | null>;
 
     stillImageFrameRate: Signal<number>;
 
@@ -85,6 +97,21 @@ export class AppState {
         this.zoomFit = signal(true);
         this.zoomPercent = signal(100);
         this.effectPreviewMode = signal('enabled' as const);
+        this.previewSplitRect = {
+            top: signal(0.0),
+            bottom: signal(1.0),
+            left: signal(0.0),
+            right: signal(0.5),
+        };
+        this.previewSplitRectAsObject = computed(() => {
+            if (this.effectPreviewMode.value !== 'split') return null;
+            return {
+                top: this.previewSplitRect.top.value,
+                right: this.previewSplitRect.right.value,
+                bottom: this.previewSplitRect.bottom.value,
+                left: this.previewSplitRect.left.value,
+            };
+        });
         this.stillImageFrameRate = signal(30);
         this.renderVideoCodec = signal('avc');
         this.renderVideoBitrate = signal(10);
@@ -143,6 +170,9 @@ export class AppState {
     }
 
     settingsFromJSON(json: string) {
+        if (!json.trimStart().startsWith('{')) {
+            throw new Error('Not a JSON preset');
+        }
         const mergedSettings = JSON.parse(SETTINGS_LIST.parsePreset(json)) as Record<string, number | boolean>;
         this.settingsFromObject(mergedSettings);
     }
@@ -173,6 +203,7 @@ export class AppState {
                     resizeFilter: this.resizeFilter.value,
                     effectEnabled: true,
                     effectSettings: this.settingsAsObject.value,
+                    outputRect: null,
                 },
                 stillImageDuration: this.renderStillImageDuration.value,
                 stillImageFrameRate: this.stillImageFrameRate.value,

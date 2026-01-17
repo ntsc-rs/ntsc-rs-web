@@ -80,9 +80,27 @@
         }
     }
 
+    &.mobile-player-controls .volume-controls {
+        border-right: none;
+    }
+
     &.disabled {
         color: theme.$interactive-muted;
     }
+}
+
+.togglable-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
+    border-left: 1px solid theme.$divider;
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+}
+
+.volume-slider {
+    min-width: 0;
 }
 
 .time-controls, .zoom-controls, .volume-controls, .effect-enabled {
@@ -90,9 +108,20 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
+    overflow: auto;
 }
 
-.player-video-pane, .media-drop-zone, .loading-state, .error {
+.time-controls, .zoom-controls, .effect-enabled {
+    flex: 0 0 auto;
+}
+
+.player-video-pane {
+    flex: 1 1 0;
+    display: flex;
+    overflow: auto;
+}
+
+.media-drop-zone, .loading-state, .error {
     flex: 1 1 auto;
     display: flex;
     align-items: center;
@@ -141,4 +170,75 @@
 .error header, .media-drop-zone header {
     font-size: 200%;
     margin-bottom: 1rem;
+}
+
+.video-viewport {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+}
+
+.player-canvas-wrapper {
+    width: fit-content;
+    height: fit-content;
+    position: relative;
+    display: flex;
+}
+
+.split-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.split-bar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1rem;
+    cursor: pointer;
+
+    &:hover::after {
+        background-color: theme.$interactive-active;
+    }
+
+    &::after {
+        content: '';
+        background-color: theme.$interactive-normal;
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: calc(50% - 1px);
+        width: 2px;
+    }
+}
+
+.slider-popup {
+    position: absolute;
+    background-color: theme.$base-color-primary;
+    border: 1px solid theme.$divider;
+    border-radius: theme.$radius;
+    padding: 0.5rem;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: auto;
+    gap: 0.5rem;
+}
+
+.preview-mode-popup {
+    align-items: stretch;
+}
+
+.vertical-slider {
+    min-height: 0;
+}
+
+.vertical-spinbox {
+    flex: 0 0 auto;
 }

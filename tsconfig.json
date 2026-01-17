@@ -18,5 +18,5 @@
 		},
 		"types": ["@types/wicg-file-system-access"]
 	},
-	"include": ["node_modules/vite/client.d.ts", "**/*"]
+	"include": ["node_modules/vite/client.d.ts", "src/global.d.ts", "**/*"]
 }

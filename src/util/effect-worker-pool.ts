@@ -26,6 +26,12 @@ export type RenderFrameSettings = {
     effectSettings: Record<string, number | boolean>,
     padToEven: boolean,
     frameNum: number,
+    outputRect: {
+        top: number,
+        right: number,
+        bottom: number,
+        left: number,
+    } | null,
 };
 
 export default class EffectWorkerPool {
@@ -124,6 +130,7 @@ export default class EffectWorkerPool {
                 effectEnabled: settings.effectEnabled,
                 frameNum: settings.frameNum,
                 padToEven: true,
+                outputRect: settings.outputRect,
             }, [settings.frame]);
             await waitForRelease;
             return renderedFrame as Formats[F];

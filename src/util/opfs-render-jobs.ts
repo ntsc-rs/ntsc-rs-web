@@ -101,69 +101,68 @@ export default class OpfsRenderJobManager {
     }
 
     async initAndDoCleanup() {
-        const renderList = [];
+        const renderList: DiskRenderJob[] = [];
         const renderJobsDir = await this.renderJobsDir;
 
         const allRenderedFiles = new Map<string, FileSystemHandleUnion>();
-        let renderListEntry = null;
         for await (const [, handle] of renderJobsDir.entries()) {
             if (handle.name === LIST_NAME) {
-                renderListEntry = handle;
-            } else {
-                allRenderedFiles.set(handle.name, handle);
+                continue;
             }
+            allRenderedFiles.set(handle.name, handle);
         }
 
         const knownRenderedFiles = new Set();
-        if (renderListEntry?.kind === 'file') {
-            const contents = await renderListEntry.getFile();
+        await this.listFile.withValue(async listFile => {
+            const contents = await (await listFile).getFile();
             try {
-                const list = JSON.parse(await contents.text()) as SerializedRenderJobList;
-                if (list.version === 1) {
-                    for (const job of list.jobs) {
-                        const renderedFile = allRenderedFiles.get(job.opfsFileName);
-                        if (!renderedFile || renderedFile.kind === 'directory') continue;
+                const textContents = await contents.text();
+                if (textContents.length === 0) return;
+                const list = JSON.parse(textContents) as SerializedRenderJobList;
+                if (list.version !== 1) return;
+                for (const job of list.jobs) {
+                    const renderedFile = allRenderedFiles.get(job.opfsFileName);
+                    if (!renderedFile || renderedFile.kind === 'directory') continue;
 
-                        let hydratedState;
-                        switch (job.state.state) {
-                            case 'waiting':
-                            case 'rendering':
-                            case 'cancelled':
-                                hydratedState = job.state;
-                                break;
-                            case 'completed':
-                                hydratedState = {
-                                    state: 'completed',
-                                    time: job.state.time,
-                                    file: await renderedFile.getFile(),
-                                } as const;
-                                break;
-                            case 'error':
-                                hydratedState = {
-                                    state: 'error',
-                                    error: typeof job.state.error === 'string' ?
-                                        new Error(job.state.error) :
-                                        job.state.error,
-                                } as const;
-                                break;
-                        }
-                        const hydrated = new DiskRenderJob(
-                            job.sourceFileName,
-                            job.videoCodec,
-                            job.startTime,
-                            hydratedState,
-                            renderedFile,
-                        );
-                        renderList.push(hydrated);
-                        knownRenderedFiles.add(job.opfsFileName);
+                    let hydratedState;
+                    switch (job.state.state) {
+                        case 'waiting':
+                        case 'rendering':
+                        case 'cancelled':
+                            hydratedState = job.state;
+                            break;
+                        case 'completed':
+                            hydratedState = {
+                                state: 'completed',
+                                time: job.state.time,
+                                file: await renderedFile.getFile(),
+                            } as const;
+                            break;
+                        case 'error':
+                            hydratedState = {
+                                state: 'error',
+                                error: typeof job.state.error === 'string' ?
+                                    new Error(job.state.error) :
+                                    job.state.error,
+                            } as const;
+                            break;
                     }
+                    const hydrated = new DiskRenderJob(
+                        job.sourceFileName,
+                        job.videoCodec,
+                        job.startTime,
+                        hydratedState,
+                        renderedFile,
+                    );
+                    renderList.push(hydrated);
+                    knownRenderedFiles.add(job.opfsFileName);
                 }
             } catch (err) {
                 // If the list is corrupted, don't get stuck
                 // eslint-disable-next-line no-console
                 console.warn('Failed to load saved render jobs:', err);
             }
-        }
+        });
 
         // Clean up any rendered media that's not on our list of render jobs
         const removals = [];

@@ -21,6 +21,7 @@
 		"@preact/preset-vite": "^2.9.3",
 		"@stylistic/eslint-plugin": "^5.6.1",
 		"@types/wicg-file-system-access": "^2023.10.7",
+		"@vitejs/plugin-basic-ssl": "^2.1.0",
 		"eslint": "^9.12.0",
 		"sass-embedded": "^1.83.0",
 		"typescript": "^5.6.2",

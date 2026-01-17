@@ -143,7 +143,10 @@ export const useAddErrorToast = () => {
             contents: <>
                 <div className={style.errorMessage}>{String(error)}</div>
                 {typeof error === 'object' && error !== null && 'stack' in error ?
-                    <div className={style.errorStack}>{(error as Error).stack}</div> :
+                    <details className={style.errorStack}>
+                        <summary>Stack trace</summary>
+                        <code className={style.errorStackTrace}>{(error as Error).stack}</code>
+                    </details> :
                     null}
             </>,
         });

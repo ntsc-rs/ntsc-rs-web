@@ -92,6 +92,10 @@ impl NtscEffectBuf {
         resize_filter: ResizeFilter,
         pad_to_even: bool,
         effect_enabled: bool,
+        rect_top: u32,
+        rect_right: u32,
+        rect_bottom: u32,
+        rect_left: u32,
     ) -> Result<Uint8Array, String> {
         // Resize the intermediate and output buffers
         let new_yiq_len =
@@ -183,9 +187,18 @@ impl NtscEffectBuf {
                 .apply_effect_to_yiq(&mut view, frame_num, [1.0, 1.0]);
 
             // The padded dimensions may not be the same as the un-padded ones
+            let dst_rect = Rect::new(rect_top as usize, rect_left as usize, rect_bottom as usize, rect_right as usize);
+
+            // If we're not filling in the entire destination frame with the applied effect, we're doing a split-screen
+            // and need to copy the post-resize, pre-effect frame "behind" it. This doesn't handle padding to even
+            // dimensions, but those two code paths should never overlap (we pad when rendering, but only use
+            // split-screen mode in the preview).
+            if dst_rect.left != 0 || dst_rect.top != 0 || dst_rect.right != dst_width || dst_rect.bottom != dst_height {
+                self.dst.copy_from_slice(src_buf);
+            }
             let dst_blit_info = BlitInfo {
-                rect: Rect::from_width_height(dst_width, dst_height),
-                destination: (0, 0),
+                rect: dst_rect,
+                destination: (dst_rect.left, dst_rect.top),
                 row_bytes: dst_width_padded * 4,
                 other_buffer_height: dst_height_padded,
                 flip_y: false,
@@ -197,16 +210,6 @@ impl NtscEffectBuf {
                 DeinterlaceMode::Bob,
                 (),
             );
-
-            if dst_width_padded != dst_width {
-                for row in self
-                    .dst
-                    .chunks_exact_mut(dst_width_padded * BYTES_PER_PIXEL)
-                {
-                    let (written, remainder) = row.split_at_mut(dst_width * BYTES_PER_PIXEL);
-                    remainder.copy_from_slice(&written[written.len() - Rgbx::NUM_COMPONENTS..]);
-                }
-            }
         } else if buffers_same_size {
             // The effect itself is disabled and we're not doing any resizing either. We need to directly copy the
             // buffer. We may need to add padding.

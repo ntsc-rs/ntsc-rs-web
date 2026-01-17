@@ -11,7 +11,7 @@ body {
     margin: 0;
     background-color: theme.$base-color-primary;
     color: theme.$text;
-    scrollbar-color: theme.$base-color-tertiary theme.$base-color-primary;
+    scrollbar-color: theme.$interactive-normal theme.$base-color-primary;
 
     & ::-webkit-scrollbar {
         background-color: theme.$base-color-primary;

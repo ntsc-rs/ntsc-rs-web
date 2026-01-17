@@ -19,6 +19,17 @@ export class FrameEvent extends TypedEvent<'frame'> {
     }
 }
 
+export class CanvasResizeEvent extends TypedEvent<'canvasresize'> {
+    width: number;
+    height: number;
+
+    constructor(width: number, height: number) {
+        super('canvasresize');
+        this.width = width;
+        this.height = height;
+    }
+}
+
 export type MediaPlayerState = 'playing' | 'paused';
 
 export class StateChangeEvent extends TypedEvent<'statechange'> {
@@ -112,9 +123,15 @@ export type PipelineSettings = {
     resizeFilter: ResizeFilter;
     effectEnabled: boolean;
     effectSettings: Record<string, number | boolean>;
+    outputRect: {
+        top: number;
+        left: number;
+        bottom: number;
+        right: number;
+    } | null;
 };
 
-export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChangeEvent> {
+export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChangeEvent | CanvasResizeEvent> {
     readonly input: WrappedInput;
     private videoSink: VideoSampleSinkLike;
     private audioSink: AudioBufferSink | null;
@@ -140,8 +157,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     private rerenderPending = false;
     private queuedSeekTime: number | null = null;
 
-    private _canvas: HTMLCanvasElement | null = null;
-    private ctx: ImageBitmapRenderingContext | null = null;
+    private _canvas: {canvas: HTMLCanvasElement, ctx: ImageBitmapRenderingContext} | null = null;
 
     private pipelineSettings: PipelineSettings;
 
@@ -228,18 +244,19 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     get canvas() {
-        return this._canvas;
+        return this._canvas?.canvas ?? null;
     }
 
     set canvas(canvas: HTMLCanvasElement | null) {
-        this._canvas = canvas;
         if (canvas) {
-            this.ctx = canvas.getContext('bitmaprenderer', {alpha: false});
             canvas.width = this.input.visibleWidth;
             canvas.height = this.input.visibleHeight;
+            const ctx = canvas.getContext('bitmaprenderer', {alpha: false});
+            if (!ctx) throw new Error('Canvas was created with a different context');
+            this._canvas = {canvas, ctx};
             void this.reRender();
         } else {
-            this.ctx = null;
+            this._canvas = null;
         }
     }
 
@@ -280,6 +297,26 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     set effectEnabled(enabled: boolean) {
         if (this.pipelineSettings.effectEnabled === enabled) return;
         this.pipelineSettings.effectEnabled = enabled;
+        void this.reRender();
+    }
+
+    get outputRect() {
+        return this.pipelineSettings.outputRect;
+    }
+
+    set outputRect(rect: {top: number; right: number; bottom: number; left: number} | null) {
+        if (
+            this.pipelineSettings.outputRect === rect ||
+            (rect !== null && this.pipelineSettings.outputRect !== null &&
+                rect.top === this.pipelineSettings.outputRect.top &&
+                rect.right === this.pipelineSettings.outputRect.right &&
+                rect.bottom === this.pipelineSettings.outputRect.bottom &&
+                rect.left === this.pipelineSettings.outputRect.left
+            )
+        ) {
+            return;
+        }
+        this.pipelineSettings.outputRect = rect;
         void this.reRender();
     }
 
@@ -399,7 +436,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
                 return;
             }
             this.setCurrentFrame(event.frame);
-            this.presentImage(event.imageBitmap, event.frame.timestamp);
+            this.presentImage(event.imageBitmap, event.frame, event.frame.timestamp);
         });
         presentationLoop.addEventListener('done', () => {
             this.stopPlaying();
@@ -498,7 +535,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
 
         this.queuedRender = (async() => {
-            if (!this.currentFrame || !this._canvas || !this.ctx) {
+            if (!this.currentFrame || !this._canvas) {
                 this.queuedRender = null;
                 return;
             }
@@ -519,7 +556,8 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             }
             // Return early if we started playback in the meantime
             if (this.presentationLoop) return;
-            this.presentImage(imageBitmap, frame.timestamp);
+            this.presentImage(imageBitmap, frame, frame.timestamp);
+            this.dispatchEvent(new FrameEvent(frame.timestamp));
         })();
 
         return this.queuedRender;
@@ -540,20 +578,19 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
     }
 
-    private presentImage(imageBitmap: ImageBitmap, timestamp: number) {
-        if (!this._canvas || !this.ctx) return;
-        const canvas = this._canvas;
-        const ctx = this.ctx;
+    private presentImage(imageBitmap: ImageBitmap, sourceFrame: VideoSample, timestamp: number) {
+        if (!this._canvas) return;
+        const {canvas, ctx} = this._canvas;
         if (canvas.width !== imageBitmap.width || canvas.height !== imageBitmap.height) {
             canvas.width = imageBitmap.width;
             canvas.height = imageBitmap.height;
+            this.dispatchEvent(new CanvasResizeEvent(imageBitmap.width, imageBitmap.height));
         }
         // Look at me, I'm a WHATWG committee member and I think allocation and garbage collection are completely free.
         // Buffer swap? Memory pool? What is this, 1995? Just allocate an entirely new backing store each frame and let
         // the garbage collector take care of it!
         ctx.transferFromImageBitmap(imageBitmap);
         this.lastDisplayedFrameTime = timestamp;
-        this.dispatchEvent(new FrameEvent(timestamp));
     }
 
     destroy() {

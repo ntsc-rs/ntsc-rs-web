@@ -18,8 +18,9 @@
 }
 
 .toast-wrapper {
-    padding-top: 0.5rem;
+    padding: 0.5rem 0;
     max-width: 50vw;
+    box-sizing: border-box;
 }
 
 @keyframes pop-in {
@@ -123,9 +124,17 @@
 .error-message {
     font-weight: 500;
     margin-bottom: 0.5rem;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
 }
 
-.error-stack {
+.error-stack summary {
+    cursor: pointer;
+}
+
+.error-stack-trace {
     white-space: pre-wrap;
     font-family: monospace;
 }

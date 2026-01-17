@@ -104,24 +104,8 @@ class Writer {
         this.cursor += bytes.byteLength;
     }
 
-    private finalizeChunk(chunkStart: number) {
-        // Calculate the CRC of the chunk type + data, but not the length
-        const crc = crc32(this.bytes, chunkStart + 4, this.cursor);
-        this.writeUint32(crc);
-        const chunkEnd = this.cursor;
-        // Write the length field
-        this.cursor = chunkStart;
-        // The length field does not include its own 4 bytes, the 4-byte chunk type, or the 4-byte CRC
-        this.writeUint32(chunkEnd - chunkStart - 12);
-        this.cursor = chunkEnd;
-    }
-
     toData() {
         return this.bytes.slice(0, this.cursor);
-    }
-
-    seek(pos: number) {
-        this.cursor = pos;
     }
 }
 

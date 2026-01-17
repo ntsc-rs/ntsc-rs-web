@@ -15,6 +15,12 @@ export type RenderFrame = {
     effectEnabled: boolean,
     frameNum: number,
     padToEven: boolean,
+    outputRect: {
+        top: number,
+        right: number,
+        bottom: number,
+        left: number,
+    } | null,
 };
 
 export type WorkerSchema =
@@ -159,7 +165,7 @@ export type Formats = {
 };
 
 const renderFrame = async<F extends keyof Formats>(
-    {frame, resizeHeight, resizeFilter, effectEnabled, frameNum, padToEven}: RenderFrame,
+    {frame, resizeHeight, resizeFilter, effectEnabled, frameNum, padToEven, outputRect}: RenderFrame,
     format: F,
 ): Promise<Formats[F]> => {
     const {effect} = await effectData;
@@ -190,6 +196,19 @@ const renderFrame = async<F extends keyof Formats>(
         // bajillion different race conditions because the committees who design these APIs never have to actually
         // use them.
         await frame.copyTo(sourceFrameWasm, {format: 'RGBX', colorSpace: 'srgb'});
+        const rect = outputRect ? {
+            top: Math.max(0, Math.min(Math.round(outputRect.top * paddedHeight), paddedHeight)),
+            left: Math.max(0, Math.min(Math.round(outputRect.left * paddedWidth), paddedWidth)),
+            bottom: Math.max(0, Math.min(Math.round(outputRect.bottom * paddedHeight), paddedHeight)),
+            right: Math.max(0, Math.min(Math.round(outputRect.right * paddedWidth), paddedWidth)),
+        } : {
+            top: 0,
+            left: 0,
+            bottom: paddedHeight,
+            right: paddedWidth,
+        };
+        rect.bottom = Math.max(rect.bottom, rect.top);
+        rect.right = Math.max(rect.right, rect.left);
         const dstFrameWasm = effect.applyEffect(
             frameNum,
             outputWidth,
@@ -197,6 +216,10 @@ const renderFrame = async<F extends keyof Formats>(
             resizeFilter,
             padToEven,
             effectEnabled,
+            rect.top,
+            rect.right,
+            rect.bottom,
+            rect.left,
         );
         const dstFrameClamped = new Uint8ClampedArray(
             dstFrameWasm.buffer as ArrayBuffer,

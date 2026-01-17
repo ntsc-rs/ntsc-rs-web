@@ -10,7 +10,8 @@ $thumb-d: 16px;
 @mixin track($fill: 0) {
     box-sizing: border-box;
     border: none;
-    height: $track-h;
+    width: var(--track-w);
+    height: var(--track-h);
     background: var(--track-c);
     border-radius: $track-h;
 
@@ -23,7 +24,8 @@ $thumb-d: 16px;
 }
 
 @mixin fill() {
-    height: $track-h;
+    width: var(--track-w);
+    height: var(--track-h);
     background: var(--fill-c);
     border-radius: $track-h;
 }
@@ -45,10 +47,22 @@ $thumb-d: 16px;
     --fill-c: #{theme.$interactive-active};
     --thumb-c: #{theme.$base-color-tertiary};
 
+    --track-w: auto;
+    --track-h: #{$track-h};
+
     &:disabled {
         --fill-c: #{theme.$interactive-muted};
     }
 
+    &.vertical {
+        writing-mode: vertical-lr;
+        direction: rtl;
+        width: $thumb-d; height: $track-w;
+        --track-h: auto;
+        --track-w: #{$track-h};
+    }
+
+    touch-action: none;
     margin: 0;
     padding: 0;
     width: $track-w; height: $thumb-d;
