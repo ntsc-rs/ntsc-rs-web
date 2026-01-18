@@ -175,9 +175,9 @@ input[type=number].spinbox-field, input[type=text].spinbox-field {
     color: white;
     cursor: pointer;
     font-size: 90%;
-    font-weight: 600;
-    padding: 0.5rem 0.75rem;
-    height: 2.5rem;
+    font-weight: 500;
+    padding: 0.25rem 0.5rem;
+    height: 2rem;
 
     @include buttons.button-color(theme.$primary, theme.$primary-hover, theme.$primary-active, theme.$primary-muted, white);
 
