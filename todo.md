@@ -23,7 +23,7 @@
   - Phone videos will be really janky. Not a web thing specifically, but this is the first version that works on phones
 - [ ] License list
 - [ ] Documentation
-- [ ] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
+- [x] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
 - [x] Actually investigate why rendering is so slow on Firefox
 - [x] Try to reduce code size (why is there a 500KB data section?)
 - [ ] Settings undo/redo

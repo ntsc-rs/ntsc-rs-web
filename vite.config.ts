@@ -1,5 +1,6 @@
 import {defineConfig, Plugin} from 'vite';
 import preact from '@preact/preset-vite';
+//import Sonda from 'sonda/vite';
 
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
@@ -22,6 +23,7 @@ export default defineConfig({
                 });
             },
         },
+        //Sonda({gzip: true}),
         basicSsl(),
     ],
     css: {
@@ -36,6 +38,5 @@ export default defineConfig({
     },
     server: {
         host: true,
-        https: true,
     },
 });

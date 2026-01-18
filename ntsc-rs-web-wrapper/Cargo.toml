@@ -36,3 +36,6 @@ wasm-bindgen-test = "0.3.34"
 opt-level = 3
 panic = "immediate-abort"
 lto = "thin"
+
+[profile.release-relaxed-simd]
+inherits = "release"

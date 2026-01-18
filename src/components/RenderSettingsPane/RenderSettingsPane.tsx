@@ -15,6 +15,7 @@ import {useAddErrorToast} from '../Toast/Toast';
 import saveToFile from '../../util/save-to-file';
 import formatFileSize from '../../util/format-file-size';
 import {extensionForCodec} from '../../util/extension-for-codec';
+import Loader from '../Loader/Loader';
 
 const renderJobPromise = import('../../util/render-job');
 
@@ -194,7 +195,9 @@ const RenderSettingsPane = () => {
     }, []);
     const curState = paneState.value;
     if (curState.state !== 'loaded') {
-        return <div>Loading...</div>;
+        return <div className={style.loader}>
+            <Loader />
+        </div>;
     }
 
     const renderDirectlyToFile = useCallback(() => {

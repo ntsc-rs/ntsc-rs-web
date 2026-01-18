@@ -48,6 +48,33 @@
     --corner-radius: 0.25rem;
 }
 
+@media(prefers-color-scheme: light) {
+    :root {
+        --base-color-primary: #f8f1e6;
+        --base-color-secondary: #ebe1d0;
+        --base-color-secondary-dark: #d3cbbd;
+        --base-color-tertiary: #fffcf7;
+
+        --text: #161518;
+        --text-detail: #262529;
+        --icon: #161518;
+        --icon-detail: #262529;
+
+        --link: #30597a;
+        --link-underline: #30597a7f;
+
+        --toggle-hover: #1615182a;
+        --toggle-active: #16151829;
+        --toggle-active-disabled: #16151819;
+
+        --interactive-normal: #353433;
+        --interactive-hover: #2c2b2b;
+        --interactive-active: #1f1e1d;
+        --interactive-muted: #85817c;
+        --divider: #afa8a2;
+    }
+}
+
 $base-color-primary: var(--base-color-primary);
 $base-color-secondary: var(--base-color-secondary);
 $base-color-secondary-dark: var(--base-color-secondary-dark);

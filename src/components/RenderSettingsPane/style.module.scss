@@ -122,3 +122,10 @@
 .download-size {
     font-size: 0.9rem;
 }
+
+.loader  {
+    display: flex;
+    flex: 1 1 0;
+    align-items: center;
+    justify-content: center;
+}
