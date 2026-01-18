@@ -1,8 +1,7 @@
 import {AudioCodec, AudioSample, CustomAudioEncoder, EncodedPacket, MaybePromise} from 'mediabunny';
 import createAvcodec, {MainModule} from '../../aac-codec/avcodec';
 
-// TODO: move this to init() to reduce initial load time?
-const avcodecPromise = createAvcodec();
+let avcodecPromise: Promise<MainModule> | null = null;
 
 type Ptr = number;
 
@@ -30,6 +29,7 @@ class AACEncoder extends CustomAudioEncoder {
     }
 
     async init(): Promise<void> {
+        if (!avcodecPromise) avcodecPromise = createAvcodec();
         const avcodec = this.avcodec = await avcodecPromise;
 
         const encoder = avcodec._aac_encoder_create(
