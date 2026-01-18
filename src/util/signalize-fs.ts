@@ -7,13 +7,18 @@ export enum DirStatus {
     FAILED,
 }
 
+export type DirEntries = (FileSystemFileHandle | Directory)[];
+
 class Directory {
     readonly handle;
     signal: Signal<{
-        status: DirStatus.NOT_TRAVERSED | DirStatus.TRAVERSING
+        status: DirStatus.NOT_TRAVERSED
+    } | {
+        status: DirStatus.TRAVERSING,
+        entries: DirEntries | null  // null if first load, previous entries if re-traversing
     } | {
         status: DirStatus.TRAVERSED,
-        entries: (FileSystemFileHandle | Directory)[]
+        entries: DirEntries
     } | {
         status: DirStatus.FAILED,
         message: string
@@ -25,7 +30,7 @@ class Directory {
         void this.traverse();
     }
 
-    private setEntries(entries: (FileSystemFileHandle | Directory)[]) {
+    private setEntries(entries: DirEntries) {
         entries.sort((a, b) => {
             if (a instanceof Directory && !(b instanceof Directory)) return -1;
             if (b instanceof Directory && !(a instanceof Directory)) return 1;
@@ -40,14 +45,33 @@ class Directory {
     }
 
     async traverse() {
-        if (this.signal.peek().status === DirStatus.TRAVERSING) return;
+        const current = this.signal.peek();
+        if (current.status === DirStatus.TRAVERSING) return;
 
-        this.signal.value = {status: DirStatus.TRAVERSING};
+        // Preserve previous entries while re-traversing to avoid layout flicker
+        const previousEntries = (current.status === DirStatus.TRAVERSED) ? current.entries : null;
+        this.signal.value = {status: DirStatus.TRAVERSING, entries: previousEntries};
 
         try {
-            const entries = [];
+            // Build a map of existing child directories to preserve their state
+            const existingDirs = new Map<string, Directory>();
+            if (previousEntries) {
+                for (const entry of previousEntries) {
+                    if (entry instanceof Directory) {
+                        existingDirs.set(entry.name, entry);
+                    }
+                }
+            }
+
+            const entries: DirEntries = [];
             for await (const childHandle of this.handle.values()) {
-                entries.push(childHandle.kind === 'directory' ? new Directory(childHandle) : childHandle);
+                if (childHandle.kind === 'directory') {
+                    // Reuse existing Directory object if available to preserve its traversal state
+                    const existing = existingDirs.get(childHandle.name);
+                    entries.push(existing ?? new Directory(childHandle));
+                } else {
+                    entries.push(childHandle);
+                }
             }
             this.setEntries(entries);
         } catch (err) {
@@ -80,6 +104,31 @@ class Directory {
     async deleteFile(name: string) {
         await this.handle.removeEntry(name);
         await this.traverse();
+    }
+
+    async deleteDirectory(name: string) {
+        await this.handle.removeEntry(name, {recursive: true});
+        await this.traverse();
+    }
+
+    async createDirectory(name: string) {
+        if (this.signal.value.status === DirStatus.TRAVERSED &&
+            this.signal.value.entries.some(entry => entry.name === name)) {
+            throw new Error('Directory already exists');
+        }
+
+        const newHandle = await this.handle.getDirectoryHandle(name, {create: true});
+        const newDir = new Directory(newHandle);
+
+        const curSignal = this.signal.value;
+        if (curSignal.status === DirStatus.TRAVERSED) {
+            const newEntries = [...curSignal.entries, newDir];
+            this.setEntries(newEntries);
+        } else {
+            await this.traverse();
+        }
+
+        return newDir;
     }
 
     async renameFile(oldHandle: FileSystemFileHandle, newName: string) {
