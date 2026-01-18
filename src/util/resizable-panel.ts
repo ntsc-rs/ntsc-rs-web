@@ -2,14 +2,14 @@ import {Signal, useSignal} from '@preact/signals';
 import {useCallback, useRef} from 'preact/hooks';
 
 export const useResizablePanel = (
-    initialSize: number,
-    minSize: number,
-    maxSize: number,
+    initialSize: string,
+    minSize: string,
+    maxSize: string,
     edge: 'top' | 'bottom' | 'left' | 'right',
 ):  {
     resizerRef: (element: HTMLElement | null) => void;
     panelRef: (element: HTMLElement | null) => void;
-    panelSize: Signal<number>;
+    panelSize: Signal<string>;
 } => {
     const panelSize = useSignal(initialSize);
     const ac = useRef<AbortController>(null);
@@ -41,9 +41,7 @@ export const useResizablePanel = (
                 let delta = (isVertical ? moveEvent.clientY : moveEvent.clientX) - startPos;
                 if (edge === 'top' || edge === 'left') delta *= -1;
                 const newSize = startSize + delta;
-                if (newSize >= minSize && newSize <= maxSize) {
-                    panelSize.value = newSize;
-                }
+                panelSize.value = `clamp(${minSize}, ${newSize}px, ${maxSize})`;
             };
             onMouseUp = () => {
                 document.removeEventListener('pointermove', onMouseMove);

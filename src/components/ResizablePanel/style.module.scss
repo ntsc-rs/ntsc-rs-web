@@ -28,7 +28,7 @@
     }
 }
 
-.vertical .splitter {
+.vertical > .splitter {
     left: 0;
     right: 0;
     height: var(--splitter-size);
@@ -40,7 +40,7 @@
     }
 }
 
-.horizontal .splitter {
+.horizontal > .splitter {
     top: 0;
     bottom: 0;
     width: var(--splitter-size);
@@ -52,19 +52,19 @@
     }
 }
 
-.topEdge .splitter {
+.topEdge > .splitter {
     top: calc(var(--splitter-size) / -2);
 }
 
-.bottomEdge .splitter {
+.bottomEdge > .splitter {
     bottom: calc(var(--splitter-size) / -2);
 }
 
-.leftEdge .splitter {
+.leftEdge > .splitter {
     left: calc(var(--splitter-size) / -2);
 }
 
-.rightEdge .splitter {
+.rightEdge > .splitter {
     right: calc(var(--splitter-size) / -2);
 }
 
@@ -80,25 +80,25 @@
 
 @media (hover: none) {
     .resizable-panel.leftEdge {
-        & .splitter {
+        & > .splitter {
             left: 0;
         }
         padding-left: calc(var(--splitter-size));
     }
     .resizable-panel.rightEdge {
-        & .splitter {
+        & > .splitter {
             right: 0;
         }
         padding-right: calc(var(--splitter-size));
     }
     .resizable-panel.topEdge {
-        & .splitter {
+        & > .splitter {
             top: 0;
         }
         padding-top: calc(var(--splitter-size));
     }
     .resizable-panel.bottomEdge {
-        & .splitter {
+        & > .splitter {
             bottom: 0;
         }
         padding-bottom: calc(var(--splitter-size));
@@ -117,14 +117,14 @@
         }
     }
 
-    .horizontal .splitter {
+    .horizontal > .splitter {
         &::after {
             width: 2px;
             height: 50%;
         }
     }
 
-    .vertical .splitter {
+    .vertical > .splitter {
         &::after {
             height: 2px;
             width: 50%;

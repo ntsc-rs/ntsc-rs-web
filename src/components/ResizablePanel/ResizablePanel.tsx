@@ -11,18 +11,18 @@ const ResizablePanel = ({
     children,
     className,
 }: {
-    initialSize: number,
-    minSize: number,
-    maxSize: number,
+    initialSize: number | string,
+    minSize: number | string,
+    maxSize: number | string,
     edge: 'top' | 'bottom' | 'left' | 'right',
     children?: ComponentChildren,
     className?: string,
 }) => {
     const isVertical = edge === 'top' || edge === 'bottom';
     const {resizerRef, panelRef, panelSize} = useResizablePanel(
-        initialSize,
-        minSize,
-        maxSize,
+        typeof initialSize === 'number' ? `${initialSize}px` : initialSize,
+        typeof minSize === 'number' ? `${minSize}px` : minSize,
+        typeof maxSize === 'number' ? `${maxSize}px` : maxSize,
         edge,
     );
 
@@ -37,7 +37,7 @@ const ResizablePanel = ({
             className,
         )}
         ref={panelRef}
-        style={{[isVertical ? 'height' : 'width']: `${panelSize.value}px`}}
+        style={{[isVertical ? 'height' : 'width']: panelSize.value}}
     >
         <div className={style.splitter} ref={resizerRef} />
         {children}
