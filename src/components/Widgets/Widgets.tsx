@@ -1,11 +1,21 @@
 import style from './style.module.scss';
 import slider from './slider.module.scss';
 
-import type {ButtonHTMLAttributes, ComponentChildren, InputHTMLAttributes, JSX, Ref, TargetedEvent} from 'preact';
-import {useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef} from 'preact/hooks';
+import {
+    createContext,
+    type ButtonHTMLAttributes,
+    type ComponentChildren,
+    type InputHTMLAttributes,
+    type JSX,
+    type Ref,
+    type TargetedEvent,
+} from 'preact';
+import {useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef} from 'preact/hooks';
 import {useSignal, type Signal} from '@preact/signals';
 import classNames from 'clsx';
+import {computePosition, flip} from '@floating-ui/dom';
 import Icon, {IconType} from '../Icon/Icon';
+import {Overlay} from '../Overlay/Overlay';
 import {Motif} from '../../util/motif';
 import {formatTimestamp, parseTimestamp} from '../../util/format-timestamp';
 
@@ -476,7 +486,7 @@ export const ToggleIcon = ({type, title, toggled, disabled, innerRef, className}
 };
 
 // eslint-disable-next-line @stylistic/comma-dangle
-export const SelectableButton = <const T, >({children, title, currentValue, value, disabled}: {
+export const SelectableButton = <T, >({children, title, currentValue, value, disabled}: {
     children?: ComponentChildren;
     title?: string;
     currentValue: Signal<T>;
@@ -604,5 +614,150 @@ export const CollapsibleHeader = ({collapsed, bodyId, children, auxiliaryItems, 
             </button>
             {auxiliaryItems}
         </header>
+    );
+};
+
+export type ContextMenuItem = {
+    id: string;
+    label: string;
+    icon?: IconType;
+    disabled?: boolean;
+    onClick: () => void;
+};
+
+type ContextMenuState = {
+    x: number;
+    y: number;
+    items: ContextMenuItem[];
+};
+
+type ContextMenuContextType = {
+    show: (event: MouseEvent, items: ContextMenuItem[]) => void;
+    close: () => void;
+};
+
+const ContextMenuContext = createContext<ContextMenuContextType | null>(null);
+
+/** Hook to get the context menu API. Returns a function to show the menu. */
+export const useContextMenu = (): ((event: MouseEvent, items: ContextMenuItem[]) => void) => {
+    const ctx = useContext(ContextMenuContext);
+    if (!ctx) {
+        throw new Error('useContextMenu must be used within a ContextMenuProvider');
+    }
+    return ctx.show;
+};
+
+const ContextMenuContent = ({
+    state,
+    onClose,
+}: {
+    state: ContextMenuState;
+    onClose: () => void;
+}): JSX.Element | null => {
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    // Close on escape key
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
+    // If the user right-clicks outside the menu, close it
+    const handleBackdropContextMenu = useCallback((event: MouseEvent) => {
+        event.preventDefault();
+        onClose();
+    }, [onClose]);
+
+    const onMenuOpen = useCallback((element: HTMLDivElement | null) => {
+        menuRef.current = element;
+        if (!element) return;
+        element.focus();
+
+        // Create a virtual element at the click position
+        const virtualEl = {
+            getBoundingClientRect() {
+                return new DOMRect(state.x, state.y, 0, 0);
+            },
+        };
+
+        void computePosition(virtualEl, element, {
+            placement: 'bottom-start',
+            middleware: [
+                flip({fallbackPlacements: ['bottom-end', 'top-start', 'top-end']}),
+            ],
+        }).then(({x, y}) => {
+            if (menuRef.current) {
+                menuRef.current.style.left = `${x}px`;
+                menuRef.current.style.top = `${y}px`;
+            }
+        });
+    }, [state]);
+
+    return (
+        <>
+            <div
+                className={style.contextMenuBackdrop}
+                onClick={onClose}
+                onContextMenu={handleBackdropContextMenu}
+            />
+            <div ref={onMenuOpen} className={style.contextMenu} tabIndex={0}>
+                {state.items.map(item => (
+                    <button
+                        key={item.id}
+                        className={style.contextMenuItem}
+                        onClick={() => {
+                            if (!item.disabled) {
+                                item.onClick();
+                                onClose();
+                            }
+                        }}
+                        disabled={item.disabled}
+                    >
+                        {item.icon && (
+                            <Icon type={item.icon} title="" className={style.contextMenuIcon} />
+                        )}
+                        <span className={style.contextMenuLabel}>{item.label}</span>
+                    </button>
+                ))}
+            </div>
+        </>
+    );
+};
+
+/** Provider that renders the global context menu. Place at app root. */
+export const ContextMenuProvider = ({children}: {children?: ComponentChildren}): JSX.Element => {
+    const state = useSignal<ContextMenuState | null>(null);
+
+    const contextValue = useMemo(() => {
+        return {
+            show: (event: MouseEvent, items: ContextMenuItem[]) => {
+                event.preventDefault();
+                event.stopPropagation();
+                state.value = {x: event.clientX, y: event.clientY, items};
+            },
+            close: () => {
+                state.value = null;
+            },
+        };
+    }, [state]);
+
+    const content = useMemo(() => {
+        if (!state.value) return null;
+        return <ContextMenuContent state={state.value} onClose={contextValue.close} />;
+    }, [state.value, contextValue]);
+
+    return (
+        <ContextMenuContext.Provider value={contextValue}>
+            {children}
+            {content &&
+                <Overlay>
+                    {content}
+                </Overlay>}
+        </ContextMenuContext.Provider>
     );
 };

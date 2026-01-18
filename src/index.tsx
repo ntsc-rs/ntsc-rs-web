@@ -8,6 +8,7 @@ import AppInner from './components/App/App';
 import {AppContext, AppState} from './app-state';
 import {OverlayProvider} from './components/Overlay/Overlay';
 import {ToastProvider} from './components/Toast/Toast';
+import {ContextMenuProvider} from './components/Widgets/Widgets';
 
 const store = new AppState();
 
@@ -16,9 +17,11 @@ export function App() {
     return (
         <AppContext.Provider value={store}>
             <OverlayProvider>
-                <ToastProvider>
-                    <AppInner />
-                </ToastProvider>
+                <ContextMenuProvider>
+                    <ToastProvider>
+                        <AppInner />
+                    </ToastProvider>
+                </ContextMenuProvider>
             </OverlayProvider>
         </AppContext.Provider>
     );
