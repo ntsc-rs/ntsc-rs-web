@@ -23,6 +23,7 @@ class Directory {
         status: DirStatus.FAILED,
         message: string
     }>;
+    private queuedTraverse = false;
 
     constructor(handle: FileSystemDirectoryHandle) {
         this.handle = handle;
@@ -44,9 +45,12 @@ class Directory {
         };
     }
 
-    async traverse() {
+    async traverse(): Promise<void> {
         const current = this.signal.peek();
-        if (current.status === DirStatus.TRAVERSING) return;
+        if (current.status === DirStatus.TRAVERSING) {
+            this.queuedTraverse = true;
+            return;
+        }
 
         // Preserve previous entries while re-traversing to avoid layout flicker
         const previousEntries = (current.status === DirStatus.TRAVERSED) ? current.entries : null;
@@ -58,6 +62,7 @@ class Directory {
             if (previousEntries) {
                 for (const entry of previousEntries) {
                     if (entry instanceof Directory) {
+                        // TODO: re-traverse?
                         existingDirs.set(entry.name, entry);
                     }
                 }
@@ -77,6 +82,11 @@ class Directory {
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.signal.value = {status: DirStatus.FAILED, message};
+        }
+
+        if (this.queuedTraverse) {
+            this.queuedTraverse = false;
+            return this.traverse();
         }
     }
 
@@ -131,7 +141,7 @@ class Directory {
         return newDir;
     }
 
-    async renameFile(oldHandle: FileSystemFileHandle, newName: string) {
+    async moveFile(oldHandle: FileSystemFileHandle, newName: string, oldParent?: Directory) {
         try {
             const existingHandle = await this.handle.getFileHandle(newName);
             throw new Error(`Destination file (${existingHandle.name}) already exists`);
@@ -144,7 +154,11 @@ class Directory {
         try {
             await oldHandle.move(this.handle, newName);
         } finally {
-            await this.traverse();
+            if (oldParent && oldParent !== this) {
+                await Promise.all([oldParent.traverse(), this.traverse()]);
+            } else {
+                await this.traverse();
+            }
         }
     }
 
