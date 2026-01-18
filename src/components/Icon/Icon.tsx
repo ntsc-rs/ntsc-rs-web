@@ -15,8 +15,11 @@ export type IconType =
     | 'close'
     | 'copy'
     | 'download'
+    | 'edit'
     | 'effect'
     | 'error'
+    | 'file'
+    | 'folder'
     | 'funnel'
     | 'gear'
     | 'github'
@@ -77,6 +80,7 @@ export const IconButton = ({
     title,
     size,
     onClick,
+    onMouseDown,
     disabled,
     motif,
     className,
@@ -85,6 +89,7 @@ export const IconButton = ({
     title: string;
     size?: string | number;
     onClick?: (event: MouseEvent) => unknown;
+    onMouseDown?: (event: MouseEvent) => unknown;
     disabled?: boolean;
     motif?: Motif;
     className?: string;
@@ -104,6 +109,7 @@ export const IconButton = ({
                 className,
             )}
             onClick={disabled ? undefined : onClick}
+            onMouseDown={disabled ? undefined : onMouseDown}
             title={title}
             disabled={disabled}
             tabIndex={0}
