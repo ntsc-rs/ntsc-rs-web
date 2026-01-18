@@ -2,6 +2,7 @@ import init, {
     NtscSettingsList,
     ResizeFilter,
     NtscEffectBuf,
+    setPanicHook,
 } from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 
 import {postMessageFromWorker, type MessageFromWorker, type MessageToWorker} from './worker-rpc';
@@ -27,7 +28,7 @@ export type WorkerSchema =
     | {
         request: {
             name: 'init';
-            message: null;
+            message: {module: WebAssembly.Module};
         };
         response: {
             name: 'initialized';
@@ -73,13 +74,17 @@ export type WorkerSchema =
     };
 
 const wasmMutex = new Queuetex(null);
-const initPromise = init();
-const effectData = initPromise.then(() => {
-    return {
-        effect: new NtscEffectBuf(),
-        settingsList: new NtscSettingsList(),
-    };
-});
+let effectData: Promise<{
+    effect: NtscEffectBuf,
+    settingsList: NtscSettingsList,
+}> | null = null;
+
+function checkEffectData(effectData: Promise<{
+    effect: NtscEffectBuf,
+    settingsList: NtscSettingsList,
+}> | null): asserts effectData {
+    if (effectData === null) throw new Error('Not initialized');
+};
 
 const listener = async(event: MessageEvent) => {
     const message = event.data as MessageToWorker<WorkerSchema>;
@@ -87,6 +92,15 @@ const listener = async(event: MessageEvent) => {
     try {
         switch (message.type) {
             case 'init': {
+                effectData = (async() => {
+                    await init({module_or_path: message.message.module});
+                    setPanicHook();
+
+                    return {
+                        effect: new NtscEffectBuf(),
+                        settingsList: new NtscSettingsList(),
+                    };
+                })();
                 await effectData;
                 postMessageFromWorker<WorkerSchema>({
                     type: 'initialized',
@@ -135,6 +149,7 @@ const listener = async(event: MessageEvent) => {
                 break;
             }
             case 'update-settings': {
+                checkEffectData(effectData);
                 const {effect, settingsList} = await effectData;
                 await wasmMutex.withValue(() => {
                     effect.setEffectSettings(settingsList.settingsFromJSON(message.message));
@@ -143,6 +158,7 @@ const listener = async(event: MessageEvent) => {
             }
             case 'close': {
                 removeEventListener('message', listener);
+                checkEffectData(effectData);
                 const {effect, settingsList} = await effectData;
                 void wasmMutex.withValue(() => effect.free());
                 settingsList.free();
@@ -168,6 +184,7 @@ const renderFrame = async<F extends keyof Formats>(
     {frame, resizeHeight, resizeFilter, effectEnabled, frameNum, padToEven, outputRect}: RenderFrame,
     format: F,
 ): Promise<Formats[F]> => {
+    checkEffectData(effectData);
     const {effect} = await effectData;
     return await wasmMutex.withValue(async() => {
         const visibleRect = frame.visibleRect!;

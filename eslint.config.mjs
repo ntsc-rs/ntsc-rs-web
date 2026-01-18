@@ -11,6 +11,7 @@ export default tseslint.config(
             'ntsc-rs-web-wrapper/**/*',
             'aac-codec/**/*',
             'dist/**/*',
+            'src/generated/**/*',
         ],
     },
     eslint.configs.recommended,

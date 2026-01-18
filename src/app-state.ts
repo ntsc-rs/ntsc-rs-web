@@ -2,18 +2,21 @@ import {batch, computed, effect, ReadonlySignal, signal, Signal} from '@preact/s
 import {createContext} from 'preact';
 import {useContext} from 'preact/hooks';
 
-import init, {
+import {
     DescriptorKind,
     NtscSettingsList,
     SettingDescriptor,
     ResizeFilter,
-    setPanicHook,
 } from '../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import throttle from './util/throttle';
-import RenderJob, {StateChangeEvent} from './util/render-job';
+import type {StateChangeEvent} from './util/render-job';
 import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
-await init();
+import SETTING_DESCRIPTORS from './generated/setting-descriptors';
+import {wasmModulePromise} from './util/ntsc-rs-module';
+
+const renderJobPromise = import('./util/render-job');
+const settingsListPromise = wasmModulePromise.then(() => new NtscSettingsList());
 
 export type EffectPreviewMode = 'enabled' | 'disabled' | 'split';
 
@@ -26,6 +29,7 @@ export type RenderJobListState =
 
 export class AppState {
     settings: Record<string, Signal<number | boolean>>;
+    defaultSettings: Record<string, number | boolean>;
     settingsAsObject: ReadonlySignal<Record<string, number | boolean>>;
 
     resizeEnabled: Signal<boolean>;
@@ -64,19 +68,22 @@ export class AppState {
 
     constructor() {
         const flatSettings: Record<string, Signal<number | boolean>> = {};
+        const defaultSettings: Record<string, number | boolean> = {};
 
         const addFromDescriptors = (descriptors: SettingDescriptor[]) => {
             for (const descriptor of descriptors) {
                 flatSettings[descriptor.idName] = signal(descriptor.value.defaultValue);
+                defaultSettings[descriptor.idName] = descriptor.value.defaultValue;
                 if (descriptor.kind === DescriptorKind.Group) {
                     addFromDescriptors(descriptor.value.children);
                 }
             }
         };
 
-        addFromDescriptors(SETTINGS_DESCRIPTORS);
+        addFromDescriptors(SETTING_DESCRIPTORS);
 
         this.settings = flatSettings;
+        this.defaultSettings = defaultSettings;
         this.settingsAsObject = computed(() => {
             const settingValues: Record<string, number | boolean> = {};
             for (const settingId in this.settings) {
@@ -169,11 +176,12 @@ export class AppState {
         });
     }
 
-    settingsFromJSON(json: string) {
+    async settingsFromJSON(json: string) {
         if (!json.trimStart().startsWith('{')) {
             throw new Error('Not a JSON preset');
         }
-        const mergedSettings = JSON.parse(SETTINGS_LIST.parsePreset(json)) as Record<string, number | boolean>;
+        const settingsList = await settingsListPromise;
+        const mergedSettings = JSON.parse(settingsList.parsePreset(json)) as Record<string, number | boolean>;
         this.settingsFromObject(mergedSettings);
     }
 
@@ -184,12 +192,13 @@ export class AppState {
         this.cleanupCallbacks.length = 0;
     }
 
-    addRenderJob(
+    async addRenderJob(
         destination: FileSystemFileHandle,
         mediaBlob: File,
         isOPFS: boolean,
     ) {
         if (!this.renderVideoCodec.value || this.renderJobs.value.state !== 'loaded') return;
+        const RenderJob = (await renderJobPromise).default;
         const renderJob = new RenderJob(
             mediaBlob,
             mediaBlob.name,
@@ -229,7 +238,7 @@ export class AppState {
     async addOPFSRenderJob(mediaBlob: File) {
         if (!this.renderVideoCodec.value) return;
         const destinationFile = await this.opfsRenderJobManager.newRenderFile(this.renderVideoCodec.value);
-        this.addRenderJob(destinationFile, mediaBlob, true);
+        await this.addRenderJob(destinationFile, mediaBlob, true);
     }
 
     async removeRenderJob(removedJob: RenderJobLike) {
@@ -249,10 +258,6 @@ export const useAppState = (): AppState => {
     if (!context) throw new Error('No AppState provided');
     return context;
 };
-
-setPanicHook();
-export const SETTINGS_LIST = new NtscSettingsList();
-export const SETTINGS_DESCRIPTORS = JSON.parse(SETTINGS_LIST.getSettingsList()) as SettingDescriptor[];
 
 type SavedState = Partial<{
     settings: Record<string, number | boolean>,

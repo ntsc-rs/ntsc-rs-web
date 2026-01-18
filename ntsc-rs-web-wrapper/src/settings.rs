@@ -307,7 +307,7 @@ export type EnumSettingDescriptor = {
 
 export type PercentageSettingDescriptor = {
     logarithmic: boolean,
-    defaultValue: boolean,
+    defaultValue: number,
 };
 
 export type IntRangeSettingDescriptor = {

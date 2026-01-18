@@ -29,6 +29,11 @@ export default defineConfig({
             localsConvention: 'camelCase',
         },
     },
+    build: {
+        minify: true,
+        sourcemap: true,
+        modulePreload: false,
+    },
     server: {
         host: true,
         https: true,

@@ -1,7 +1,9 @@
 import {AppVideoCodec} from '../app-state';
 import Queuetex from './async-queue';
+import {extensionForCodec} from './extension-for-codec';
 import {generateID} from './id';
-import RenderJob, {extensionForCodec, RenderJobState, StateChangeEvent} from './render-job';
+import type RenderJob from './render-job';
+import type {RenderJobState, StateChangeEvent} from './render-job';
 import {TypedEventTarget} from './typed-events';
 
 const DIRECTORY_NAME = 'render_jobs';

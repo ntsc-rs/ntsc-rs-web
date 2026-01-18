@@ -2,7 +2,8 @@ import style from './style.module.scss';
 
 import {MutableRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef} from 'preact/hooks';
 import {EffectPreviewMode, useAppState} from '../../app-state';
-import MediaPlayer, {FrameEvent, StateChangeEvent} from '../../util/media-player';
+import type MediaPlayer from '../../util/media-player';
+import type {FrameEvent, StateChangeEvent} from '../../util/media-player';
 import {batch, Signal, useComputed, useSignal, useSignalEffect} from '@preact/signals';
 import {
     CheckboxToggle,
@@ -28,6 +29,8 @@ import useFloating from '../../util/floating';
 import {ComputePositionConfig, offset, shift, size} from '@floating-ui/dom';
 import {Overlay} from '../Overlay/Overlay';
 
+const mediaPlayerModule = import('../../util/media-player');
+
 type MediaPlayerState =
     {state: 'not_loaded'} |
     {state: 'loading', player: Promise<MediaPlayer | void>} |
@@ -42,18 +45,21 @@ const VideoPlayer = () => {
 
     useEffect(() => {
         if (mediaBlob) {
-            const playerPromise = MediaPlayer.create(mediaBlob, GLOBAL_WORKER_POOL, {
-                resizeHeight: appState.resizeHeight.value,
-                resizeFilter: appState.resizeFilter.value,
-                effectEnabled: appState.effectPreviewMode.value !== 'disabled',
-                effectSettings: appState.settingsAsObject.value,
-                outputRect: appState.previewSplitRectAsObject.value,
-            }, appState.stillImageFrameRate.value).then(player => {
-                mediaPlayer.value = {state: 'loaded', player};
-                return player;
-            }, error => {
-                mediaPlayer.value = {state: 'error', error: error as Error};
-            });
+            const playerPromise = mediaPlayerModule
+                .then(mediaPlayerModule => mediaPlayerModule.default)
+                .then(MediaPlayer => MediaPlayer.create(mediaBlob, GLOBAL_WORKER_POOL, {
+                    resizeHeight: appState.resizeHeight.value,
+                    resizeFilter: appState.resizeFilter.value,
+                    effectEnabled: appState.effectPreviewMode.value !== 'disabled',
+                    effectSettings: appState.settingsAsObject.value,
+                    outputRect: appState.previewSplitRectAsObject.value,
+                }, appState.stillImageFrameRate.value))
+                .then(player => {
+                    mediaPlayer.value = {state: 'loaded', player};
+                    return player;
+                }, error => {
+                    mediaPlayer.value = {state: 'error', error: error as Error};
+                });
             mediaPlayer.value = {state: 'loading', player: playerPromise};
         } else {
             mediaPlayer.value = {state: 'not_loaded'};

@@ -5,7 +5,7 @@ import {Button, Dropdown, SpinBox, timestampSpinboxDisplay} from '../Widgets/Wid
 import {batch, useComputed, useSignal} from '@preact/signals';
 import {useCallback, useLayoutEffect} from 'preact/hooks';
 import {SliderWithSpinBox} from '../SettingsList/SettingsList';
-import {extensionForCodec, RenderJobState, supportedCodecsForVideo} from '../../util/render-job';
+import type {RenderJobState} from '../../util/render-job';
 import {formatTimestamp, formatTimestampHuman} from '../../util/format-timestamp';
 import Icon, {IconButton} from '../Icon/Icon';
 import {Motif} from '../../util/motif';
@@ -14,6 +14,9 @@ import {RenderJobLike} from '../../util/opfs-render-jobs';
 import {useAddErrorToast} from '../Toast/Toast';
 import saveToFile from '../../util/save-to-file';
 import formatFileSize from '../../util/format-file-size';
+import {extensionForCodec} from '../../util/extension-for-codec';
+
+const renderJobPromise = import('../../util/render-job');
 
 type PaneState =
     | {state: 'loading'}
@@ -166,27 +169,28 @@ const RenderSettingsPane = () => {
 
     const paneState = useSignal<PaneState>({state: 'loading'});
     useLayoutEffect(() => {
-        supportedCodecsForVideo.then(codecs => {
-            const dropdownOptions = [];
-            if (codecs.has('avc')) dropdownOptions.push({
-                id: 'avc', name: 'H.264 (MP4)',
-            } as const);
-            if (codecs.has('vp9')) dropdownOptions.push({
-                id: 'vp9', name: 'VP9 (WebM)',
-            } as const);
-            if (codecs.has('av1')) dropdownOptions.push({
-                id: 'av1', name: 'AV1 (WebM)',
-            } as const);
-            if (codecs.has('vp8')) dropdownOptions.push({
-                id: 'vp8', name: 'VP8 (WebM)',
-            } as const);
-            paneState.value = {
-                state: 'loaded',
-                dropdownOptions,
-            };
-        }, error => {
-            paneState.value = {state: 'error', error};
-        });
+        renderJobPromise.then(imported => imported.supportedCodecsForVideo)
+            .then(codecs => {
+                const dropdownOptions = [];
+                if (codecs.has('avc')) dropdownOptions.push({
+                    id: 'avc', name: 'H.264 (MP4)',
+                } as const);
+                if (codecs.has('vp9')) dropdownOptions.push({
+                    id: 'vp9', name: 'VP9 (WebM)',
+                } as const);
+                if (codecs.has('av1')) dropdownOptions.push({
+                    id: 'av1', name: 'AV1 (WebM)',
+                } as const);
+                if (codecs.has('vp8')) dropdownOptions.push({
+                    id: 'vp8', name: 'VP8 (WebM)',
+                } as const);
+                paneState.value = {
+                    state: 'loaded',
+                    dropdownOptions,
+                };
+            }, error => {
+                paneState.value = {state: 'error', error};
+            });
     }, []);
     const curState = paneState.value;
     if (curState.state !== 'loaded') {
@@ -201,9 +205,13 @@ const RenderSettingsPane = () => {
             startIn: 'videos',
             id: 'save-video',
         }).then(handle => {
-            appState.addRenderJob(handle, mediaBlob, false);
-        }, () => {
-            // This is an AbortError; the user just closed the dialog
+            return appState.addRenderJob(handle, mediaBlob, false);
+        }, err => {
+            if (err instanceof DOMException && err.name === 'AbortError') {
+                // The user just closed the dialog
+                return;
+            }
+            addErrorToast('Failed to create render job', err);
         });
     }, [appState]);
 

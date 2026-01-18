@@ -3,13 +3,14 @@ import style from './style.module.scss';
 import {Signal} from '@preact/signals';
 import {DescriptorKind, ResizeFilter, SettingDescriptor} from '../../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import {useCallback, useId} from 'preact/hooks';
-import {SETTINGS_DESCRIPTORS, SETTINGS_LIST, useAppState} from '../../app-state';
+import {useAppState} from '../../app-state';
 import {CheckboxToggle, Dropdown, Slider, SpinBox} from '../Widgets/Widgets';
 import classNames from 'clsx';
 import {IconButton} from '../Icon/Icon';
 import {useAddErrorToast} from '../Toast/Toast';
 import saveToFile from '../../util/save-to-file';
 import showOpenFilePicker from '../../util/file-picker';
+import SETTING_DESCRIPTORS from '../../generated/setting-descriptors';
 
 export const SliderWithSpinBox = (
     {min, max, step, value, disabled, 'aria-labelledby': labelledBy}: {
@@ -212,7 +213,7 @@ const SettingsList = () => {
                     className={style.resizeDropdown}
                 />
             </div>
-            {SETTINGS_DESCRIPTORS.map(
+            {SETTING_DESCRIPTORS.map(
                 descriptor => <Setting
                     descriptor={descriptor}
                     value={appState.settings[descriptor.idName]}
@@ -236,7 +237,7 @@ const PresetsButtons = () => {
     const pasteSettings = useCallback(() => {
         navigator.clipboard.readText()
             .then(settingsJSON => {
-                appState.settingsFromJSON(settingsJSON);
+                return appState.settingsFromJSON(settingsJSON);
             })
             .catch(err => {
                 addErrorToast('Error pasting preset', err);
@@ -257,7 +258,7 @@ const PresetsButtons = () => {
                 }
             })
             .then(settingsJSON => {
-                if (settingsJSON) appState.settingsFromJSON(settingsJSON);
+                if (settingsJSON) return appState.settingsFromJSON(settingsJSON);
             })
             .catch(err => {
                 addErrorToast('Error loading preset', err);
@@ -265,7 +266,7 @@ const PresetsButtons = () => {
     }, [appState]);
 
     const resetSettings = useCallback(() => {
-        appState.settingsFromJSON(SETTINGS_LIST.defaultPreset());
+        appState.settingsFromObject(appState.defaultSettings);
     }, [appState]);
 
     return (

@@ -14,7 +14,7 @@ import {
     getEncodableVideoCodecs,
     registerEncoder,
 } from 'mediabunny';
-import {PipelineSettings} from './media-player';
+import type {PipelineSettings} from './media-player';
 import EffectWorkerPool from './effect-worker-pool';
 import Queue from './queue';
 import {TypedEvent, TypedEventTarget} from './typed-events';
@@ -28,15 +28,6 @@ export type RenderJobSettings = {
     effectSettings: PipelineSettings,
     stillImageFrameRate: number,
     stillImageDuration: number,
-};
-
-export const extensionForCodec = (codec: AppVideoCodec) => {
-    switch (codec) {
-        case 'avc': return 'mp4';
-        case 'vp8':
-        case 'vp9':
-        case 'av1': return 'webm';
-    }
 };
 
 export type RenderJobState =

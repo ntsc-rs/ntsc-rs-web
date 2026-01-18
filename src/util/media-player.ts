@@ -5,8 +5,8 @@ import {
     WrappedAudioBuffer,
 } from 'mediabunny';
 import {TypedEvent, TypedEventTarget} from './typed-events';
-import {ResizeFilter} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
-import EffectWorkerPool from './effect-worker-pool';
+import type {ResizeFilter} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
+import type EffectWorkerPool from './effect-worker-pool';
 import Queue from './queue';
 import {VideoSampleSinkLike, WrappedInput} from './still-image-media';
 
