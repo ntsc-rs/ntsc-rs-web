@@ -36,6 +36,7 @@
 - [ ] Keyboard shortcuts
 - [ ] Some sort of demo image or video
 - [ ] Drag and drop presets
+- [ ] PWA
 
 Can be deferred to later:
 - [ ] Image-sequence output in Chrome (the only browser with a directory picker)

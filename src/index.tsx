@@ -13,7 +13,6 @@ import {ContextMenuProvider} from './components/Widgets/Widgets';
 const store = new AppState();
 
 export function App() {
-
     return (
         <AppContext.Provider value={store}>
             <OverlayProvider>

@@ -29,7 +29,7 @@ const App = () => {
             className={style.sidePanel}
             initialSize={500}
             minSize={isPortrait ? 200 : 400}
-            maxSize={10000}
+            maxSize={isPortrait ? '75vh' : '75vw'}
             edge={isPortrait ? 'top' : 'right'}
         >
             <TabbedPanel
