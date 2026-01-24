@@ -31,7 +31,11 @@ class Directory {
         void this.traverse();
     }
 
-    private setEntries(entries: DirEntries) {
+    private async setEntries(entries: DirEntries) {
+        if (this.queuedTraverse) {
+            this.queuedTraverse = false;
+            return this.traverse();
+        }
         entries.sort((a, b) => {
             if (a instanceof Directory && !(b instanceof Directory)) return -1;
             if (b instanceof Directory && !(a instanceof Directory)) return 1;
@@ -45,7 +49,7 @@ class Directory {
         };
     }
 
-    async traverse(): Promise<void> {
+    private preTraverse() {
         const current = this.signal.peek();
         if (current.status === DirStatus.TRAVERSING) {
             this.queuedTraverse = true;
@@ -55,6 +59,15 @@ class Directory {
         // Preserve previous entries while re-traversing to avoid layout flicker
         const previousEntries = (current.status === DirStatus.TRAVERSED) ? current.entries : null;
         this.signal.value = {status: DirStatus.TRAVERSING, entries: previousEntries};
+    }
+
+    async traverse(): Promise<void> {
+        const current = this.signal.peek();
+
+        // Preserve previous entries while re-traversing to avoid layout flicker
+        const previousEntries = (current.status === DirStatus.TRAVERSED || current.status === DirStatus.TRAVERSING) ?
+            current.entries :
+            null;
 
         try {
             // Build a map of existing child directories to preserve their state
@@ -78,80 +91,104 @@ class Directory {
                     entries.push(childHandle);
                 }
             }
-            this.setEntries(entries);
+            return this.setEntries(entries);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.signal.value = {status: DirStatus.FAILED, message};
-        }
 
-        if (this.queuedTraverse) {
-            this.queuedTraverse = false;
-            return this.traverse();
+            if (this.queuedTraverse) {
+                this.queuedTraverse = false;
+                return this.traverse();
+            }
         }
     }
 
     async createFile(name: string) {
-        if (this.signal.value.status === DirStatus.TRAVERSED &&
-            this.signal.value.entries.some(entry => entry.name === name)) {
+        const curSignal = this.signal.value;
+        if (curSignal.status === DirStatus.TRAVERSED &&
+            curSignal.entries.some(entry => entry.name === name)) {
             throw new Error('File already exists');
         }
+        this.preTraverse();
 
-        const newHandle = await this.handle.getFileHandle(name, {create: true});
-        const newFile = await newHandle.getFile();
-        if (newFile.size > 0) throw new Error('File already exists');
+        let newEntries = null, newHandle;
+        try {
+            newHandle = await this.handle.getFileHandle(name, {create: true});
+            const newFile = await newHandle.getFile();
+            if (newFile.size > 0) throw new Error('File already exists');
 
-        const curSignal = this.signal.value;
-        if (curSignal.status === DirStatus.TRAVERSED) {
-            const newEntries = [...curSignal.entries, newHandle];
-            this.setEntries(newEntries);
-        } else {
-            await this.traverse();
+            if (curSignal.status === DirStatus.TRAVERSED) {
+                newEntries = [...curSignal.entries, newHandle];
+            }
+        } finally {
+            if (newEntries && curSignal === this.signal.value) {
+                await this.setEntries(newEntries);
+            } else {
+                await this.traverse();
+            }
         }
 
         return newHandle;
     }
 
     async deleteFile(name: string) {
-        await this.handle.removeEntry(name);
-        await this.traverse();
+        this.preTraverse();
+        try {
+            await this.handle.removeEntry(name);
+        } finally {
+            await this.traverse();
+        }
     }
 
     async deleteDirectory(name: string) {
-        await this.handle.removeEntry(name, {recursive: true});
-        await this.traverse();
+        this.preTraverse();
+        try {
+            await this.handle.removeEntry(name, {recursive: true});
+        } finally {
+            await this.traverse();
+        }
     }
 
     async createDirectory(name: string) {
-        if (this.signal.value.status === DirStatus.TRAVERSED &&
-            this.signal.value.entries.some(entry => entry.name === name)) {
+        const curSignal = this.signal.value;
+        if (curSignal.status === DirStatus.TRAVERSED &&
+            curSignal.entries.some(entry => entry.name === name)) {
             throw new Error('Directory already exists');
         }
+        this.preTraverse();
 
-        const newHandle = await this.handle.getDirectoryHandle(name, {create: true});
-        const newDir = new Directory(newHandle);
+        let newEntries = null, newDir;
+        try {
+            const newHandle = await this.handle.getDirectoryHandle(name, {create: true});
+            newDir = new Directory(newHandle);
 
-        const curSignal = this.signal.value;
-        if (curSignal.status === DirStatus.TRAVERSED) {
-            const newEntries = [...curSignal.entries, newDir];
-            this.setEntries(newEntries);
-        } else {
-            await this.traverse();
+            if (curSignal.status === DirStatus.TRAVERSED) {
+                newEntries = [...curSignal.entries, newDir];
+            }
+        } finally {
+            if (newEntries && curSignal === this.signal.value) {
+                await this.setEntries(newEntries);
+            } else {
+                await this.traverse();
+            }
         }
-
         return newDir;
     }
 
     async moveFile(oldHandle: FileSystemFileHandle, newName: string, oldParent?: Directory) {
-        try {
-            const existingHandle = await this.handle.getFileHandle(newName);
-            throw new Error(`Destination file (${existingHandle.name}) already exists`);
-        } catch (err) {
-            if ((err as Error).name !== 'NotFoundError') {
-                throw err;
-            }
+        this.preTraverse();
+        if (oldParent && oldParent !== this) {
+            oldParent.preTraverse();
         }
-
         try {
+            try {
+                const existingHandle = await this.handle.getFileHandle(newName);
+                throw new Error(`Destination file (${existingHandle.name}) already exists`);
+            } catch (err) {
+                if ((err as Error).name !== 'NotFoundError') {
+                    throw err;
+                }
+            }
             await oldHandle.move(this.handle, newName);
         } finally {
             if (oldParent && oldParent !== this) {
