@@ -12,6 +12,7 @@ import throttle from './util/throttle';
 import type {StateChangeEvent} from './util/render-job';
 import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
+import Directory from './util/signalize-fs';
 import SETTING_DESCRIPTORS from './generated/setting-descriptors';
 import {wasmModulePromise} from './util/ntsc-rs-module';
 
@@ -26,6 +27,24 @@ export type RenderJobListState =
     | {state: 'loading'}
     | {state: 'loaded', jobs: Signal<RenderJobLike[]>}
     | {state: 'error', error: unknown};
+
+export type SelectedPreset = {
+    path: string;
+    handle: FileSystemFileHandle;
+    originalSettings: Record<string, number | boolean>;
+};
+
+export type PresetsDirState =
+    | {state: 'not_loaded'}
+    | {state: 'loading'}
+    | {state: 'loaded', root: {dir: Directory, path: string}}
+    | {state: 'error', error: unknown};
+
+export type PresetsState = {
+    presetsDir: Signal<PresetsDirState>;
+    selectedPreset: Signal<SelectedPreset | null>;
+    presetsPanelOpen: Signal<boolean>;
+};
 
 export class AppState {
     settings: Record<string, Signal<number | boolean>>;
@@ -63,6 +82,7 @@ export class AppState {
 
     renderJobs: Signal<RenderJobListState>;
     mediaBlob: Signal<File | null>;
+    presetsState: PresetsState;
     private cleanupCallbacks: (() => unknown)[] = [];
     private opfsRenderJobManager = new OpfsRenderJobManager();
 
@@ -125,6 +145,11 @@ export class AppState {
         this.renderStillImageDuration = signal(60);
         this.renderJobs = signal({state: 'loading'});
         this.mediaBlob = signal(null);
+        this.presetsState = {
+            presetsDir: signal({state: 'not_loaded'}),
+            selectedPreset: signal(null),
+            presetsPanelOpen: signal(false),
+        };
 
         loadState(this);
 
@@ -176,13 +201,13 @@ export class AppState {
         });
     }
 
-    async settingsFromJSON(json: string) {
+    async parsePreset(json: string) {
         if (!json.trimStart().startsWith('{')) {
             throw new Error('Not a JSON preset');
         }
         const settingsList = await settingsListPromise;
         const mergedSettings = JSON.parse(settingsList.parsePreset(json)) as Record<string, number | boolean>;
-        this.settingsFromObject(mergedSettings);
+        return mergedSettings;
     }
 
     destroy() {
@@ -245,6 +270,39 @@ export class AppState {
         if (this.renderJobs.value.state !== 'loaded') return;
         this.renderJobs.value.jobs.value = this.renderJobs.value.jobs.value.filter(job => job !== removedJob);
         await this.opfsRenderJobManager.removeRenderJob(removedJob);
+    }
+
+    async initPresetsDir() {
+        if (this.presetsState.presetsDir.value.state !== 'not_loaded') return;
+
+        try {
+            await navigator.storage.persist();
+            const root = await navigator.storage.getDirectory();
+            const presetsDirHandle = await root.getDirectoryHandle('presets', {create: true});
+            const dir = new Directory(presetsDirHandle);
+            // Preload the root directory
+            await dir.traverse(true);
+            this.presetsState.presetsDir.value = {
+                state: 'loaded',
+                root: {
+                    dir,
+                    path: '/presets',
+                },
+            };
+        } catch (error) {
+            this.presetsState.presetsDir.value = {state: 'error', error};
+        }
+    }
+
+    isPresetModified(): boolean {
+        const selected = this.presetsState.selectedPreset.value;
+        if (!selected) return false;
+        const current = this.settingsAsObject.value;
+        const original = selected.originalSettings;
+        for (const key in current) {
+            if (current[key] !== original[key]) return true;
+        }
+        return false;
     }
 }
 

@@ -194,12 +194,10 @@ export default class OpfsRenderJobManager {
 
             const writable = await listFile.createWritable();
             try {
-                await writable.write({type: 'write', data: JSON.stringify(serialized)});
-            } catch (err) {
-                await writable.abort();
-                throw err;
+                await writable.write(JSON.stringify(serialized));
+            } finally {
+                await writable.close();
             }
-            await writable.close();
         });
     }
 

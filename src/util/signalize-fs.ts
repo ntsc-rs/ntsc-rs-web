@@ -7,7 +7,10 @@ export enum DirStatus {
     FAILED,
 }
 
+export type PlaceholderHandle = {kind: 'placeholderDirectory' | 'placeholderFile', name: string};
+
 export type DirEntries = (FileSystemFileHandle | Directory)[];
+export type LoadingDirEntries = (FileSystemFileHandle | Directory | PlaceholderHandle)[];
 
 class Directory {
     readonly handle;
@@ -15,7 +18,7 @@ class Directory {
         status: DirStatus.NOT_TRAVERSED
     } | {
         status: DirStatus.TRAVERSING,
-        entries: DirEntries | null  // null if first load, previous entries if re-traversing
+        entries: LoadingDirEntries | null  // null if first load, previous entries if re-traversing
     } | {
         status: DirStatus.TRAVERSED,
         entries: DirEntries
@@ -28,7 +31,18 @@ class Directory {
     constructor(handle: FileSystemDirectoryHandle) {
         this.handle = handle;
         this.signal = signal({status: DirStatus.NOT_TRAVERSED});
-        void this.traverse();
+    }
+
+    private static sortEntries(entries: DirEntries | LoadingDirEntries) {
+        entries.sort((a, b) => {
+            const aIsDir = a instanceof Directory || a.kind === 'placeholderDirectory';
+            const bIsDir = b instanceof Directory || b.kind === 'placeholderDirectory';
+            if (aIsDir && !bIsDir) return -1;
+            if (bIsDir && !aIsDir) return 1;
+            const handleA = a instanceof Directory ? a.handle : a;
+            const handleB = b instanceof Directory ? b.handle : b;
+            return handleA.name.localeCompare(handleB.name);
+        });
     }
 
     private async setEntries(entries: DirEntries) {
@@ -36,32 +50,32 @@ class Directory {
             this.queuedTraverse = false;
             return this.traverse();
         }
-        entries.sort((a, b) => {
-            if (a instanceof Directory && !(b instanceof Directory)) return -1;
-            if (b instanceof Directory && !(a instanceof Directory)) return 1;
-            const handleA = a instanceof Directory ? a.handle : a;
-            const handleB = b instanceof Directory ? b.handle : b;
-            return handleA.name.localeCompare(handleB.name);
-        });
+        Directory.sortEntries(entries);
         this.signal.value = {
             status: DirStatus.TRAVERSED,
             entries,
         };
     }
 
-    private preTraverse() {
+    private preTraverse(placeholderEntry?: PlaceholderHandle) {
         const current = this.signal.peek();
         if (current.status === DirStatus.TRAVERSING) {
             this.queuedTraverse = true;
             return;
         }
-
-        // Preserve previous entries while re-traversing to avoid layout flicker
-        const previousEntries = (current.status === DirStatus.TRAVERSED) ? current.entries : null;
+        let previousEntries = null;
+        if (current.status === DirStatus.TRAVERSED) {
+            if (placeholderEntry) {
+                previousEntries = [...current.entries, placeholderEntry];
+                Directory.sortEntries(previousEntries);
+            } else {
+                previousEntries = current.entries;
+            }
+        }
         this.signal.value = {status: DirStatus.TRAVERSING, entries: previousEntries};
     }
 
-    async traverse(): Promise<void> {
+    async traverse(recursive = false): Promise<void> {
         const current = this.signal.peek();
 
         // Preserve previous entries while re-traversing to avoid layout flicker
@@ -75,7 +89,6 @@ class Directory {
             if (previousEntries) {
                 for (const entry of previousEntries) {
                     if (entry instanceof Directory) {
-                        // TODO: re-traverse?
                         existingDirs.set(entry.name, entry);
                     }
                 }
@@ -86,7 +99,11 @@ class Directory {
                 if (childHandle.kind === 'directory') {
                     // Reuse existing Directory object if available to preserve its traversal state
                     const existing = existingDirs.get(childHandle.name);
-                    entries.push(existing ?? new Directory(childHandle));
+                    const handle = existing ?? new Directory(childHandle);
+                    if (recursive) {
+                        void handle.traverse(true);
+                    }
+                    entries.push(handle);
                 } else {
                     entries.push(childHandle);
                 }
@@ -109,20 +126,16 @@ class Directory {
             curSignal.entries.some(entry => entry.name === name)) {
             throw new Error('File already exists');
         }
-        this.preTraverse();
+        this.preTraverse({kind: 'placeholderFile', name});
 
-        let newEntries = null, newHandle;
+        let newHandle;
         try {
             newHandle = await this.handle.getFileHandle(name, {create: true});
             const newFile = await newHandle.getFile();
             if (newFile.size > 0) throw new Error('File already exists');
-
-            if (curSignal.status === DirStatus.TRAVERSED) {
-                newEntries = [...curSignal.entries, newHandle];
-            }
         } finally {
-            if (newEntries && curSignal === this.signal.value) {
-                await this.setEntries(newEntries);
+            if (newHandle && curSignal === this.signal.value && curSignal.status === DirStatus.TRAVERSED) {
+                await this.setEntries([...curSignal.entries, newHandle]);
             } else {
                 await this.traverse();
             }
@@ -155,7 +168,7 @@ class Directory {
             curSignal.entries.some(entry => entry.name === name)) {
             throw new Error('Directory already exists');
         }
-        this.preTraverse();
+        this.preTraverse({kind: 'placeholderDirectory', name});
 
         let newEntries = null, newDir;
         try {

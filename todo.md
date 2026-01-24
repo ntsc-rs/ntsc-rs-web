@@ -3,7 +3,7 @@
   - [x] Adjustable duration
   - [x] Spinbox-based time control
 - [x] "Copy frame" and "Save frame" buttons
-- [ ] OPFS-based preset manager?
+- [x] OPFS-based preset manager?
 - [x] Video padding filter
 - [x] OPFS output (render jobs output to OPFS and have a "Save" button)
   - [x] Retain list of render jobs still in OPFS
@@ -35,7 +35,7 @@
 - [ ] Test in Safari
 - [ ] Keyboard shortcuts
 - [ ] Some sort of demo image or video
-- [ ] Drag and drop presets
+- [x] Drag and drop presets
 - [ ] PWA
 
 Can be deferred to later:

@@ -6,10 +6,7 @@ import {useCallback, useId} from 'preact/hooks';
 import {useAppState} from '../../app-state';
 import {CheckboxToggle, Dropdown, Slider, SpinBox} from '../Widgets/Widgets';
 import classNames from 'clsx';
-import {IconButton} from '../Icon/Icon';
-import {useAddErrorToast} from '../Toast/Toast';
-import saveToFile from '../../util/save-to-file';
-import showOpenFilePicker from '../../util/file-picker';
+import PresetManager from '../PresetManager/PresetManager';
 import SETTING_DESCRIPTORS from '../../generated/setting-descriptors';
 
 export const SliderWithSpinBox = (
@@ -225,89 +222,11 @@ const SettingsList = () => {
     );
 };
 
-const PresetsButtons = () => {
-    const appState = useAppState();
-    const addErrorToast = useAddErrorToast();
-
-    const copySettings = useCallback(() => {
-        navigator.clipboard.writeText(JSON.stringify(appState.settingsAsObject.value))
-            .then(undefined, err => addErrorToast('Error copying preset', err));
-    }, [appState]);
-
-    const pasteSettings = useCallback(() => {
-        navigator.clipboard.readText()
-            .then(settingsJSON => {
-                return appState.settingsFromJSON(settingsJSON);
-            })
-            .catch(err => {
-                addErrorToast('Error pasting preset', err);
-            });
-    }, [appState]);
-
-    const saveSettings = useCallback(() => {
-        const settingsStr = JSON.stringify(appState.settingsAsObject.value);
-        const settingsBlob = new Blob([new TextEncoder().encode(settingsStr)], {type: 'application/json'});
-        saveToFile('preset.json', settingsBlob);
-    }, [appState]);
-
-    const loadSettings = useCallback(() => {
-        showOpenFilePicker({accept: 'application/json'})
-            .then(files => {
-                if (files?.[0]) {
-                    return files?.[0].text();
-                }
-            })
-            .then(settingsJSON => {
-                if (settingsJSON) return appState.settingsFromJSON(settingsJSON);
-            })
-            .catch(err => {
-                addErrorToast('Error loading preset', err);
-            });
-    }, [appState]);
-
-    const resetSettings = useCallback(() => {
-        appState.settingsFromObject(appState.defaultSettings);
-    }, [appState]);
-
-    return (
-        <div className={style.presetsRow}>
-            <div className={style.presetsLabel}>Presets</div>
-            <div className={style.presetsButtons}>
-                <IconButton
-                    type="copy"
-                    title="Copy preset to clipboard"
-                    onClick={copySettings}
-                />
-                <IconButton
-                    type="paste"
-                    title="Paste preset from clipboard"
-                    onClick={pasteSettings}
-                />
-                <IconButton
-                    type="download"
-                    title="Save preset to file"
-                    onClick={saveSettings}
-                />
-                <IconButton
-                    type="upload"
-                    title="Load preset from file"
-                    onClick={loadSettings}
-                />
-                <IconButton
-                    type="reset"
-                    title="Reset settings"
-                    onClick={resetSettings}
-                />
-            </div>
-        </div>
-    );
-};
-
 const SettingsPane = () => {
     return (
         <div className={style.settingsPane}>
             <SettingsList />
-            <PresetsButtons />
+            <PresetManager />
         </div>
     );
 };

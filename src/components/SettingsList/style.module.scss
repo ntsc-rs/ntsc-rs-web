@@ -130,20 +130,3 @@
 .resize-dropdown {
     flex: 1 1 0;
 }
-
-.presets-row {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    border-top: 1px solid theme.$divider;
-}
-
-.presets-label {
-    font-weight: 600;
-}
-
-.presets-buttons {
-    display: flex;
-    align-items: center;
-}
