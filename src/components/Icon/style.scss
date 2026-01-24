@@ -6,6 +6,7 @@
     background-color: currentColor;
     display: inline-block;
     mask-size: cover;
+    flex: 0 0 auto;
 
     &.motif-monochrome {
         color: theme.$interactive-normal;

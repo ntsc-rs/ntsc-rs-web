@@ -85,7 +85,6 @@ const Toast = ({children, toastRef, closeToast, showCloseButton, timeout, motif 
                         type='close'
                         title='Close'
                         onClick={closeToast}
-                        className={style.toastIcon}
                     />}
                 </div>
                 {typeof title === 'undefined' || title === 'null' ?

@@ -719,7 +719,7 @@ const ContextMenuContent = ({
                         disabled={item.disabled}
                     >
                         {item.icon && (
-                            <Icon type={item.icon} title="" className={style.contextMenuIcon} />
+                            <Icon type={item.icon} title="" />
                         )}
                         <span className={style.contextMenuLabel}>{item.label}</span>
                     </button>
