@@ -744,52 +744,6 @@ const usePresetManagerState = () => {
         const newPresetParent = signal<{dir: Directory; path: string} | null>(null);
         const newDirParent = signal<{dir: Directory; path: string} | null>(null);
 
-        const handleCopy = () => {
-            navigator.clipboard.writeText(JSON.stringify(appState.settingsAsObject.value))
-                .then(undefined, err => addErrorToast('Failed to copy settings', err));
-        };
-
-        const handlePaste = async() => {
-            try {
-                const settingsJSON = await navigator.clipboard.readText();
-                const settingsObj = await appState.parsePreset(settingsJSON);
-                appState.settingsFromObject(settingsObj);
-            } catch (err) {
-                addErrorToast('Failed to paste settings', err);
-            }
-        };
-
-        const handleSaveToFile = () => {
-            const settingsStr = JSON.stringify(appState.settingsAsObject.value);
-            const settingsBlob = new Blob([new TextEncoder().encode(settingsStr)], {type: 'application/json'});
-            saveToFile('preset.json', settingsBlob);
-        };
-
-        const handleOpenFile = async() => {
-            let fileName = null;
-            try {
-                const files = await showOpenFilePicker({accept: 'application/json'});
-                const file = files?.[0];
-                if (!file) return;
-                fileName = file.name;
-                const settingsJSON = await file.text();
-                if (!settingsJSON) return;
-                const settingsObj = await appState.parsePreset(settingsJSON);
-                appState.settingsFromObject(settingsObj);
-            } catch (err) {
-                addErrorToast(errorWithFileName('Failed to load preset', fileName), err);
-            }
-        };
-
-        const handleReset = () => {
-            // We should provide some way to un-select a preset, and the reset button seems like a conceptually good
-            // place to do so.
-            batch(() => {
-                appState.presetsState.selectedPreset.value = null;
-                appState.settingsFromObject(appState.defaultSettings);
-            });
-        };
-
         const handleReload = () => {
             if (presetsDir.value.state !== 'loaded') return;
             void presetsDir.value.root.dir.traverse(true);
@@ -952,11 +906,6 @@ const usePresetManagerState = () => {
             newDirParent,
             isModified,
 
-            handleCopy,
-            handlePaste,
-            handleSaveToFile,
-            handleOpenFile,
-            handleReset,
             handleReload,
             togglePanel,
             handleSaveToLibrary,
@@ -974,6 +923,95 @@ const usePresetManagerState = () => {
             onDropPresets,
         };
     }, [appState.presetsState.selectedPreset, isModified]);
+};
+
+const SettingsActions = (): JSX.Element => {
+    const appState = useAppState();
+    const {presetsState, canUndo, canRedo} = appState;
+    const {presetsPanelOpen} = presetsState;
+    const addErrorToast = useAddErrorToast();
+
+    const handlers = useMemo(() => {
+        const handleUndo = () => {
+            appState.undo();
+        };
+
+        const handleRedo = () => {
+            appState.redo();
+        };
+
+        const handleCopy = () => {
+            navigator.clipboard.writeText(JSON.stringify(appState.settingsAsObject.value))
+                .then(undefined, err => addErrorToast('Failed to copy settings', err));
+        };
+
+        const handlePaste = async() => {
+            try {
+                const settingsJSON = await navigator.clipboard.readText();
+                const settingsObj = await appState.parsePreset(settingsJSON);
+                appState.settingsFromObject(settingsObj);
+            } catch (err) {
+                addErrorToast('Failed to paste settings', err);
+            }
+        };
+
+        const handleSaveToFile = () => {
+            const settingsStr = JSON.stringify(appState.settingsAsObject.value);
+            const settingsBlob = new Blob([new TextEncoder().encode(settingsStr)], {type: 'application/json'});
+            saveToFile('preset.json', settingsBlob);
+        };
+
+        const handleOpenFile = async() => {
+            let fileName = null;
+            try {
+                const files = await showOpenFilePicker({accept: 'application/json'});
+                const file = files?.[0];
+                if (!file) return;
+                fileName = file.name;
+                const settingsJSON = await file.text();
+                if (!settingsJSON) return;
+                const settingsObj = await appState.parsePreset(settingsJSON);
+                appState.settingsFromObject(settingsObj);
+            } catch (err) {
+                addErrorToast(errorWithFileName('Failed to load preset', fileName), err);
+            }
+        };
+
+        const handleReset = () => {
+            // We should provide some way to un-select a preset, and the reset button seems like a conceptually good
+            // place to do so.
+            batch(() => {
+                appState.presetsState.selectedPreset.value = null;
+                appState.settingsFromObject(appState.defaultSettings);
+            });
+        };
+
+        return {
+            handleUndo,
+            handleRedo,
+            handleCopy,
+            handlePaste,
+            handleSaveToFile,
+            handleOpenFile,
+            handleReset,
+        };
+    }, [appState, addErrorToast]);
+
+    return (
+        <div className={classNames(style.settingsSection, presetsPanelOpen.value && style.open)}>
+            <div className={style.headerTitle}>Current settings:</div>
+            <div className={style.currentSettingsActions}>
+                <IconButton type="undo" disabled={!canUndo.value} title="Undo" onClick={handlers.handleUndo} />
+                <IconButton type="redo" disabled={!canRedo.value} title="Redo" onClick={handlers.handleRedo} />
+                <div className={style.divider} />
+                <IconButton type="copy" title="Copy to clipboard" onClick={handlers.handleCopy} />
+                <IconButton type="paste" title="Paste from clipboard" onClick={handlers.handlePaste} />
+                <IconButton type="download" title="Save to file" onClick={handlers.handleSaveToFile} />
+                <IconButton type="upload" title="Open from file" onClick={handlers.handleOpenFile} />
+                <IconButton type="reset" title="Reset to defaults" onClick={handlers.handleReset} />
+            </div>
+        </div>
+    );
 };
 
 const PresetManager = (): JSX.Element => {
@@ -1003,16 +1041,7 @@ const PresetManager = (): JSX.Element => {
 
     return useMemo(() => (
         <div className={style.presetManager}>
-            <div className={classNames(style.settingsSection, presetsPanelOpen.value && style.open)}>
-                <div className={style.headerTitle}>Current settings:</div>
-                <div className={style.currentSettingsActions}>
-                    <IconButton type="copy" title="Copy to clipboard" onClick={contextValue.handleCopy} />
-                    <IconButton type="paste" title="Paste from clipboard" onClick={contextValue.handlePaste} />
-                    <IconButton type="download" title="Save to file" onClick={contextValue.handleSaveToFile} />
-                    <IconButton type="upload" title="Open from file" onClick={contextValue.handleOpenFile} />
-                    <IconButton type="reset" title="Reset to defaults" onClick={contextValue.handleReset} />
-                </div>
-            </div>
+            <SettingsActions />
 
             {presetsPanelOpen.value ?
                 <ResizablePanel

@@ -15,6 +15,7 @@ import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 import Directory from './util/signalize-fs';
 import SETTING_DESCRIPTORS from './generated/setting-descriptors';
 import {wasmModulePromise} from './util/ntsc-rs-module';
+import Undoer from './util/undoer';
 
 const renderJobPromise = import('./util/render-job');
 const settingsListPromise = wasmModulePromise.then(() => new NtscSettingsList());
@@ -31,7 +32,7 @@ export type RenderJobListState =
 export type SelectedPreset = {
     path: string;
     handle: FileSystemFileHandle;
-    originalSettings: Record<string, number | boolean>;
+    originalSettings: SettingsObj;
 };
 
 export type PresetsDirState =
@@ -46,10 +47,14 @@ export type PresetsState = {
     presetsPanelOpen: Signal<boolean>;
 };
 
+export type SettingsObj = Record<string, number | boolean>;
+
 export class AppState {
     settings: Record<string, Signal<number | boolean>>;
-    defaultSettings: Record<string, number | boolean>;
-    settingsAsObject: ReadonlySignal<Record<string, number | boolean>>;
+    defaultSettings: SettingsObj;
+    settingsAsObject: ReadonlySignal<SettingsObj>;
+    canUndo: Signal<boolean>;
+    canRedo: Signal<boolean>;
 
     resizeEnabled: Signal<boolean>;
     resizeHeight: Signal<number>;
@@ -85,10 +90,12 @@ export class AppState {
     presetsState: PresetsState;
     private cleanupCallbacks: (() => unknown)[] = [];
     private opfsRenderJobManager = new OpfsRenderJobManager();
+    private undoer: Undoer<SettingsObj>;
+    private isUndoing = true;
 
     constructor() {
         const flatSettings: Record<string, Signal<number | boolean>> = {};
-        const defaultSettings: Record<string, number | boolean> = {};
+        const defaultSettings: SettingsObj = {};
 
         const addFromDescriptors = (descriptors: SettingDescriptor[]) => {
             for (const descriptor of descriptors) {
@@ -105,7 +112,7 @@ export class AppState {
         this.settings = flatSettings;
         this.defaultSettings = defaultSettings;
         this.settingsAsObject = computed(() => {
-            const settingValues: Record<string, number | boolean> = {};
+            const settingValues: SettingsObj = {};
             for (const settingId in this.settings) {
                 if (!Object.prototype.hasOwnProperty.call(this.settings, settingId)) {
                     continue;
@@ -116,6 +123,7 @@ export class AppState {
             settingValues.version = 1;
             return settingValues;
         });
+        this.undoer = new Undoer(1000, 25);
         this.resizeEnabled = signal(true);
         this.resizeHeight = signal(480);
         this.resizeFilter = signal(ResizeFilter.Bilinear);
@@ -151,7 +159,21 @@ export class AppState {
             presetsPanelOpen: signal(false),
         };
 
+        this.canUndo = signal(this.undoer.canUndo);
+        this.canRedo = signal(this.undoer.canRedo);
+        this.cleanupCallbacks.push(effect(() => {
+            const settingsObj = this.settingsAsObject.value;
+            // Avoid a "press undo -> update settings -> that creates another undo point" loop
+            if (!this.isUndoing) this.undoer.setValue(settingsObj);
+            this.canUndo.value = this.undoer.canUndo;
+            this.canRedo.value = this.undoer.canRedo;
+        }));
+
         loadState(this);
+
+        // Ensure we push undo state exactly once, regardless of whether there were saved settings to restore
+        this.isUndoing = false;
+        this.undoer.setValue(this.settingsAsObject.value);
 
         const persistSettings = (settings: SavedState) => {
             localStorage.setItem('settings', JSON.stringify(settings));
@@ -186,7 +208,7 @@ export class AppState {
         );
     }
 
-    settingsFromObject(settingsObj: Record<string, number | boolean>) {
+    settingsFromObject(settingsObj: SettingsObj) {
         batch(() => {
             for (const settingId in settingsObj) {
                 if (
@@ -206,7 +228,7 @@ export class AppState {
             throw new Error('Not a JSON preset');
         }
         const settingsList = await settingsListPromise;
-        const mergedSettings = JSON.parse(settingsList.parsePreset(json)) as Record<string, number | boolean>;
+        const mergedSettings = JSON.parse(settingsList.parsePreset(json)) as SettingsObj;
         return mergedSettings;
     }
 
@@ -304,6 +326,30 @@ export class AppState {
         }
         return false;
     }
+
+    undo() {
+        this.isUndoing = true;
+        try {
+            const newSettings = this.undoer.undo();
+            if (newSettings) this.settingsFromObject(newSettings);
+            this.canUndo.value = this.undoer.canUndo;
+            this.canRedo.value = this.undoer.canRedo;
+        } finally {
+            this.isUndoing = false;
+        }
+    }
+
+    redo() {
+        this.isUndoing = true;
+        try {
+            const newSettings = this.undoer.redo();
+            if (newSettings) this.settingsFromObject(newSettings);
+            this.canUndo.value = this.undoer.canUndo;
+            this.canRedo.value = this.undoer.canRedo;
+        } finally {
+            this.isUndoing = false;
+        }
+    }
 }
 
 export const AppContext = createContext<AppState | undefined>(undefined);
@@ -318,7 +364,7 @@ export const useAppState = (): AppState => {
 };
 
 type SavedState = Partial<{
-    settings: Record<string, number | boolean>,
+    settings: SettingsObj,
     resizeEnabled: boolean,
     resizeHeight: number,
     resizeFilter: ResizeFilter,

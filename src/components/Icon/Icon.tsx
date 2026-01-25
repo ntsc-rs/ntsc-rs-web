@@ -31,11 +31,13 @@ export type IconType =
     | 'pin'
     | 'plus'
     | 'range'
+    | 'redo'
     | 'reset'
     | 'search'
     | 'speaker'
     | 'speaker-mute'
     | 'stack'
+    | 'undo'
     | 'upload'
     | 'warning';
 

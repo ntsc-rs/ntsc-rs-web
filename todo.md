@@ -26,7 +26,7 @@
 - [x] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
 - [x] Actually investigate why rendering is so slow on Firefox
 - [x] Try to reduce code size (why is there a 500KB data section?)
-- [ ] Settings undo/redo
+- [x] Settings undo/redo
 - [ ] Shot on an iPhone(tm) woooo baby
   - [ ] Some(?) .mov files don't seek
   - [ ] EXIF rotation
@@ -37,6 +37,7 @@
 - [ ] Some sort of demo image or video
 - [x] Drag and drop presets
 - [ ] PWA
+- [ ] Weirdness with vertical stacked resizable panels on mobile
 
 Can be deferred to later:
 - [ ] Image-sequence output in Chrome (the only browser with a directory picker)
