@@ -69,7 +69,7 @@ dependencies = [
 [[package]]
 name = "fearless_simd"
 version = "0.3.0"
-source = "git+https://github.com/valadaptive/fearless_simd/?branch=ntsc-rs#5d04f256072bb26a96a56087cf880fc39481369b"
+source = "git+https://github.com/linebender/fearless_simd/?branch=main#bbb430b6f5e201fe77f9a0e7d0aeb507214ef917"
 
 [[package]]
 name = "hashbrown"

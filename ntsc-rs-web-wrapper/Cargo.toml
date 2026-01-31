@@ -26,9 +26,6 @@ ntscrs = { path = "../../ntscrs/crates/ntscrs", default-features = false }
 sval = { version = "2.14.1", features = ["std"] }
 sval_json = { version = "2.14.1", features = ["std"] }
 
-[patch.crates-io]
-fearless_simd = { git = "https://github.com/valadaptive/fearless_simd/", branch = "ntsc-rs" }
-
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"
 
