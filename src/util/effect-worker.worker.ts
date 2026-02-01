@@ -214,15 +214,15 @@ const renderFrame = async<F extends keyof Formats>(
         // use them.
         await frame.copyTo(sourceFrameWasm, {format: 'RGBX', colorSpace: 'srgb'});
         const rect = outputRect ? {
-            top: Math.max(0, Math.min(Math.round(outputRect.top * paddedHeight), paddedHeight)),
-            left: Math.max(0, Math.min(Math.round(outputRect.left * paddedWidth), paddedWidth)),
-            bottom: Math.max(0, Math.min(Math.round(outputRect.bottom * paddedHeight), paddedHeight)),
-            right: Math.max(0, Math.min(Math.round(outputRect.right * paddedWidth), paddedWidth)),
+            top: Math.max(0, Math.min(Math.round(outputRect.top * outputHeight), outputHeight)),
+            left: Math.max(0, Math.min(Math.round(outputRect.left * outputWidth), outputWidth)),
+            bottom: Math.max(0, Math.min(Math.round(outputRect.bottom * outputHeight), outputHeight)),
+            right: Math.max(0, Math.min(Math.round(outputRect.right * outputWidth), outputWidth)),
         } : {
             top: 0,
             left: 0,
-            bottom: paddedHeight,
-            right: paddedWidth,
+            bottom: outputHeight,
+            right: outputWidth,
         };
         rect.bottom = Math.max(rect.bottom, rect.top);
         rect.right = Math.max(rect.right, rect.left);

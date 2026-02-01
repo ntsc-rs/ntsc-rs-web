@@ -689,6 +689,15 @@ const VideoPaneInner = ({player}: {player: MediaPlayer}) => {
     useLayoutEffect(() => {
         resizeCanvas();
     }, [appState.zoomFit.value, appState.zoomPercent.value, appState.effectPreviewMode.value === 'split']);
+    useLayoutEffect(() => {
+        const onCanvasResize = () => {
+            resizeCanvas();
+        };
+        player.addEventListener('canvasresize', onCanvasResize);
+        return () => {
+            player.removeEventListener('canvasresize', onCanvasResize);
+        };
+    }, [player]);
 
     return (
         <div className={style.videoViewport} ref={viewportRef}>
