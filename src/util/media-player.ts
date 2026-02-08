@@ -443,7 +443,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
                 return;
             }
             this.setCurrentFrame(event.frame);
-            this.presentImage(event.imageBitmap, event.frame, event.frame.timestamp);
+            this.presentImage(event.imageBitmap, event.frame.timestamp);
         });
         presentationLoop.addEventListener('done', () => {
             this.stopPlaying();
@@ -541,15 +541,13 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             this.rerenderPending = true;
             return this.queuedRender;
         }
+        if (!this.currentFrame || !this._canvas) {
+            return;
+        }
 
+        const frame = this.currentFrame;
+        const frameNum = this.frameRate * frame.timestamp;
         this.queuedRender = (async() => {
-            if (!this.currentFrame || !this._canvas) {
-                this.queuedRender = null;
-                return;
-            }
-
-            const frame = this.currentFrame;
-            const frameNum = this.frameRate * frame.timestamp;
             try {
                 const getFrame = await this.effectPool.processFrame({
                     frame: frame.toVideoFrame(),
@@ -566,7 +564,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
                 }
                 // Return early if we started playback in the meantime
                 if (this.presentationLoop) return;
-                this.presentImage(imageBitmap, frame, frame.timestamp);
+                this.presentImage(imageBitmap, frame.timestamp);
                 this.dispatchEvent(new FrameEvent(frame.timestamp));
             } catch {
                 this.queuedRender = null;
@@ -591,7 +589,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         }
     }
 
-    private presentImage(imageBitmap: ImageBitmap, sourceFrame: VideoSample, timestamp: number) {
+    private presentImage(imageBitmap: ImageBitmap, timestamp: number) {
         if (!this._canvas) return;
         const {canvas, ctx} = this._canvas;
         if (canvas.width !== imageBitmap.width || canvas.height !== imageBitmap.height) {

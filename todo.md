@@ -28,7 +28,8 @@
 - [x] Try to reduce code size (why is there a 500KB data section?)
 - [x] Settings undo/redo
 - [ ] Shot on an iPhone(tm) woooo baby
-  - [ ] Some(?) .mov files don't seek
+  - [x] Some(?) .mov files don't seek
+    - [ ] getSample still returns null quasi-randomly in Mediabunny; seems like an upstream bug to investigate
   - [ ] EXIF rotation
     - [x] Apply during processing
     - [ ] Show correct dimensions
