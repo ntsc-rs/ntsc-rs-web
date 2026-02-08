@@ -348,11 +348,16 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             if (timestamp === null) return;
             this.playbackStartTimeMedia = timestamp;
             const ac = this.playbackAbortController;
-            const sample = await this.videoSink.getSample(timestamp);
-            this.setCurrentFrame(sample);
-            // We *could* check if the seek event is outdated after awaiting getSample, but in practice that makes
-            // scrubbing appear a lot laggier since most frames never render at all.
-            await this.reRender();
+            try {
+                const sample = await this.videoSink.getSample(timestamp);
+                this.setCurrentFrame(sample);
+                // We *could* check if the seek event is outdated after awaiting getSample, but in practice that makes
+                // scrubbing appear a lot laggier since most frames never render at all.
+                await this.reRender();
+            } catch {
+                this.queuedSeekTime = null;
+                return;
+            }
             // Another seek event may have occurred in the meantime
             if (ac.signal.aborted || this.queuedSeekTime !== timestamp) {
                 return queueSeek();
@@ -545,23 +550,27 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
 
             const frame = this.currentFrame;
             const frameNum = this.frameRate * frame.timestamp;
-            const getFrame = await this.effectPool.processFrame({
-                frame: frame.toVideoFrame(),
-                rotation: getRotation(frame.rotation),
-                frameNum,
-                padToEven: false,
-                ...this.pipelineSettings,
-            }, 'imagebitmap');
-            const imageBitmap = await getFrame();
-            this.queuedRender = null;
-            if (this.rerenderPending) {
-                this.rerenderPending = false;
-                return this.reRender();
+            try {
+                const getFrame = await this.effectPool.processFrame({
+                    frame: frame.toVideoFrame(),
+                    rotation: getRotation(frame.rotation),
+                    frameNum,
+                    padToEven: false,
+                    ...this.pipelineSettings,
+                }, 'imagebitmap');
+                const imageBitmap = await getFrame();
+                this.queuedRender = null;
+                if (this.rerenderPending) {
+                    this.rerenderPending = false;
+                    return this.reRender();
+                }
+                // Return early if we started playback in the meantime
+                if (this.presentationLoop) return;
+                this.presentImage(imageBitmap, frame, frame.timestamp);
+                this.dispatchEvent(new FrameEvent(frame.timestamp));
+            } catch {
+                this.queuedRender = null;
             }
-            // Return early if we started playback in the meantime
-            if (this.presentationLoop) return;
-            this.presentImage(imageBitmap, frame, frame.timestamp);
-            this.dispatchEvent(new FrameEvent(frame.timestamp));
         })();
 
         return this.queuedRender;
