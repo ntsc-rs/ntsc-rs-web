@@ -77,6 +77,7 @@ const wasmMutex = new Queuetex(null);
 let effectData: Promise<{
     effect: NtscEffectBuf,
     settingsList: NtscSettingsList,
+    memory: WebAssembly.Memory,
 }> | null = null;
 
 function checkEffectData(effectData: Promise<{
@@ -93,12 +94,13 @@ const listener = async(event: MessageEvent) => {
         switch (message.type) {
             case 'init': {
                 effectData = (async() => {
-                    await init({module_or_path: message.message.module});
+                    const {memory} = await init({module_or_path: message.message.module});
                     setPanicHook();
 
                     return {
                         effect: new NtscEffectBuf(),
                         settingsList: new NtscSettingsList(),
+                        memory,
                     };
                 })();
                 await effectData;
@@ -185,7 +187,7 @@ const renderFrame = async<F extends keyof Formats>(
     format: F,
 ): Promise<Formats[F]> => {
     checkEffectData(effectData);
-    const {effect} = await effectData;
+    const {effect, memory} = await effectData;
     return await wasmMutex.withValue(async() => {
         const visibleRect = frame.visibleRect!;
         let outputWidth, outputHeight;
@@ -199,8 +201,6 @@ const renderFrame = async<F extends keyof Formats>(
             outputHeight = visibleRect.height;
         }
         const sourceFrameWasm = effect.inputBuffer(visibleRect.width, visibleRect.height);
-        const paddedWidth = padToEven ? outputWidth + (outputWidth % 2) : outputWidth;
-        const paddedHeight = padToEven ? outputHeight + (outputHeight % 2) : outputHeight;
         // For some stupid reason, this method is async! Why is a simple colorspace conversion async? The committee
         // says so, so it must be! Sync bad, async good! Race conditions are muuuuuch better than two frames of
         // jank! Async good, jank bad! Never mind that the WebAssembly memory might be invalidated by the time we're
@@ -239,21 +239,24 @@ const renderFrame = async<F extends keyof Formats>(
             rect.left,
         );
         const dstFrameClamped = new Uint8ClampedArray(
-            dstFrameWasm.buffer as ArrayBuffer,
-            dstFrameWasm.byteOffset,
-            dstFrameWasm.byteLength,
+            memory.buffer,
+            dstFrameWasm.ptr,
+            dstFrameWasm.len,
         );
         switch (format) {
             case 'imagebitmap':
-                return await createImageBitmap(new ImageData(dstFrameClamped, paddedWidth, paddedHeight), {
-                    premultiplyAlpha: 'none',
-                    colorSpaceConversion: 'none',
-                }) as Formats[F];
+                return await createImageBitmap(
+                    new ImageData(dstFrameClamped, dstFrameWasm.width, dstFrameWasm.height),
+                    {
+                        premultiplyAlpha: 'none',
+                        colorSpaceConversion: 'none',
+                    },
+                ) as Formats[F];
             case 'videoframe':
                 return new VideoFrame(dstFrameClamped, {
                     format: 'RGBX',
-                    codedWidth: paddedWidth,
-                    codedHeight: paddedHeight,
+                    codedWidth: dstFrameWasm.width,
+                    codedHeight: dstFrameWasm.height,
                     timestamp: frame.timestamp,
                     duration: frame.duration ?? undefined,
                 }) as Formats[F];
@@ -261,7 +264,10 @@ const renderFrame = async<F extends keyof Formats>(
                 // We can't just call toBlob on the canvas because, as mentioned above, Firefox randomizes the pixel
                 // data slightly before returning it. Instead, we have to ship an entire PNG encoder. Feeling
                 // "private" yet?
-                const blob = await encodePng(new ImageData(dstFrameClamped, paddedWidth, paddedHeight), false);
+                const blob = await encodePng(
+                    new ImageData(dstFrameClamped, dstFrameWasm.width, dstFrameWasm.height),
+                    false, /* encodeAlpha */
+                );
                 return blob as Formats[F];
             }
         }

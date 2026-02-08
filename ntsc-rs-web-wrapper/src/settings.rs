@@ -1,6 +1,6 @@
 use ntscrs::{
-    settings::{EnumValue, SettingDescriptor, SettingKind, Settings as _, SettingsList},
     NtscEffectFullSettings,
+    settings::{EnumValue, SettingDescriptor, SettingKind, Settings as _, SettingsList},
 };
 use sval_json::stream_to_string;
 use wasm_bindgen::prelude::*;

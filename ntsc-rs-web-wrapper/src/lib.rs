@@ -1,22 +1,25 @@
+mod rotate;
 mod settings;
 mod utils;
 
 extern crate alloc;
 
 use fast_image_resize::{
+    FilterType, ResizeAlg, ResizeOptions, Resizer, SrcCropping,
     images::{TypedCroppedImageMut, TypedImage},
     pixels::U8x4,
-    FilterType, ResizeAlg, ResizeOptions, Resizer, SrcCropping,
 };
 use ntscrs::{
-    yiq_fielding::{pixel_bytes_for, BlitInfo, DeinterlaceMode, PixelFormat, Rect, Rgbx, YiqView},
     NtscEffect, NtscEffectFullSettings,
+    yiq_fielding::{BlitInfo, DeinterlaceMode, PixelFormat, Rect, Rgbx, YiqView, pixel_bytes_for},
 };
 
 use wasm_bindgen::prelude::*;
 
 //pub use wasm_bindgen_rayon::init_thread_pool;
 use web_sys::js_sys::Uint8Array;
+
+use crate::rotate::Rotation;
 
 #[allow(unused_macros)]
 macro_rules! console_log {
@@ -38,11 +41,12 @@ impl NtscConfigurator {
 #[derive(Default)]
 pub struct NtscEffectBuf {
     effect: NtscEffect,
-    src: Box<[u8]>,
-    intermediate: Box<[f32]>,
     resizer: Resizer,
-    resize_buf: Box<[u8]>,
-    dst: Box<[u8]>,
+    src: Box<[u8]>,
+    effect_buf: Box<[f32]>,
+    resize_dst: Box<[u8]>,
+    rotate_dst: Box<[u8]>,
+    effect_dst: Box<[u8]>,
     input_dimensions: (usize, usize),
 }
 
@@ -54,10 +58,17 @@ pub enum ResizeFilter {
 }
 
 fn maybe_resize<T: Default + Copy>(buf: &mut Box<[T]>, new_len: usize) {
-    if buf.len() == new_len {
-        return;
+    if buf.len() != new_len {
+        *buf = vec![T::default(); new_len].into_boxed_slice();
     }
-    *buf = vec![T::default(); new_len].into_boxed_slice();
+}
+
+#[wasm_bindgen]
+pub struct EffectOutput {
+    pub ptr: *const u8,
+    pub len: usize,
+    pub width: usize,
+    pub height: usize,
 }
 
 #[wasm_bindgen]
@@ -96,11 +107,8 @@ impl NtscEffectBuf {
         rect_right: u32,
         rect_bottom: u32,
         rect_left: u32,
-    ) -> Result<Uint8Array, String> {
-        // Resize the intermediate and output buffers
-        let new_yiq_len =
-            YiqView::max_buf_length_for((dst_width, dst_height), self.effect.use_field);
-        maybe_resize(&mut self.intermediate, new_yiq_len);
+    ) -> Result<EffectOutput, String> {
+        // Resize the output buffer
         const BYTES_PER_PIXEL: usize = pixel_bytes_for::<Rgbx, u8>();
 
         let (dst_width_padded, dst_height_padded) = if pad_to_even {
@@ -109,28 +117,29 @@ impl NtscEffectBuf {
             (dst_width, dst_height)
         };
         let new_dst_len = dst_width_padded * dst_height_padded * BYTES_PER_PIXEL;
-        maybe_resize(&mut self.dst, new_dst_len);
+        maybe_resize(&mut self.effect_dst, new_dst_len);
 
         let buffers_same_size = self.input_dimensions == (dst_width, dst_height);
         // Update the size of the intermediate buffer used for resizing
         if buffers_same_size {
-            maybe_resize(&mut self.resize_buf, 0);
+            maybe_resize(&mut self.resize_dst, 0);
         } else {
             maybe_resize(
-                &mut self.resize_buf,
+                &mut self.resize_dst,
                 dst_width * dst_height * BYTES_PER_PIXEL,
             );
         }
 
         let (resize_dst, resize_dst_dimensions) = if effect_enabled {
-            (&mut self.resize_buf, (dst_width as u32, dst_height as u32))
+            (&mut self.resize_dst, (dst_width as u32, dst_height as u32))
         } else {
             (
-                &mut self.dst,
+                &mut self.effect_dst,
                 (dst_width_padded as u32, dst_height_padded as u32),
             )
         };
-        let src_buf = if buffers_same_size {
+
+        let effect_src = if buffers_same_size {
             &self.src
         } else {
             let resize_alg = match resize_filter {
@@ -169,17 +178,21 @@ impl NtscEffectBuf {
                     .resize_typed(&src_image, &mut dst_image, &resize_options)
                     .map_err(|e| e.to_string())?;
             }
-            &self.resize_buf
+            &self.resize_dst
         };
 
         if effect_enabled {
+            let new_yiq_len =
+                YiqView::max_buf_length_for((dst_width, dst_height), self.effect.use_field);
+            maybe_resize(&mut self.effect_buf, new_yiq_len);
+
             let mut view = YiqView::from_parts(
-                &mut self.intermediate,
+                &mut self.effect_buf,
                 (dst_width, dst_height),
                 self.effect.use_field.to_yiq_field(frame_num),
             );
             view.set_from_strided_buffer::<Rgbx, u8, _>(
-                src_buf,
+                effect_src,
                 BlitInfo::from_full_frame(dst_width, dst_height, dst_width * BYTES_PER_PIXEL),
                 (),
             );
@@ -187,14 +200,23 @@ impl NtscEffectBuf {
                 .apply_effect_to_yiq(&mut view, frame_num, [1.0, 1.0]);
 
             // The padded dimensions may not be the same as the un-padded ones
-            let dst_rect = Rect::new(rect_top as usize, rect_left as usize, rect_bottom as usize, rect_right as usize);
+            let dst_rect = Rect::new(
+                rect_top as usize,
+                rect_left as usize,
+                rect_bottom as usize,
+                rect_right as usize,
+            );
 
             // If we're not filling in the entire destination frame with the applied effect, we're doing a split-screen
             // and need to copy the post-resize, pre-effect frame "behind" it. This doesn't handle padding to even
             // dimensions, but those two code paths should never overlap (we pad when rendering, but only use
             // split-screen mode in the preview).
-            if dst_rect.left != 0 || dst_rect.top != 0 || dst_rect.right != dst_width || dst_rect.bottom != dst_height {
-                self.dst.copy_from_slice(src_buf);
+            if dst_rect.left != 0
+                || dst_rect.top != 0
+                || dst_rect.right != dst_width
+                || dst_rect.bottom != dst_height
+            {
+                self.effect_dst.copy_from_slice(effect_src);
             }
             let dst_blit_info = BlitInfo {
                 rect: dst_rect,
@@ -205,30 +227,35 @@ impl NtscEffectBuf {
             };
 
             view.write_to_strided_buffer::<Rgbx, u8, _>(
-                &mut self.dst,
+                &mut self.effect_dst,
                 dst_blit_info,
                 DeinterlaceMode::Bob,
                 (),
             );
-        } else if buffers_same_size {
-            // The effect itself is disabled and we're not doing any resizing either. We need to directly copy the
-            // buffer. We may need to add padding.
-            if dst_width_padded != dst_width {
-                for (dst, src) in self
-                    .dst
-                    .chunks_exact_mut(dst_width_padded * BYTES_PER_PIXEL)
-                    .zip(self.src.chunks_exact(dst_width * BYTES_PER_PIXEL))
-                {
-                    dst[..dst_width * BYTES_PER_PIXEL].copy_from_slice(src);
+        } else {
+            maybe_resize(&mut self.effect_buf, 0);
+
+            if buffers_same_size {
+                // The effect itself is disabled and we're not doing any resizing. We need to directly copy
+                // the buffer.
+                if dst_width_padded != dst_width {
+                    // Leave room for padding.
+                    for (dst, src) in self
+                        .effect_dst
+                        .chunks_exact_mut(dst_width_padded * BYTES_PER_PIXEL)
+                        .zip(self.src.chunks_exact(dst_width * BYTES_PER_PIXEL))
+                    {
+                        dst[..dst_width * BYTES_PER_PIXEL].copy_from_slice(src);
+                    }
+                } else {
+                    self.effect_dst[..self.src.len()].copy_from_slice(&self.src);
                 }
-            } else {
-                self.dst[..self.src.len()].copy_from_slice(&self.src);
             }
         }
 
         if dst_width_padded != dst_width {
             for row in self
-                .dst
+                .effect_dst
                 .chunks_exact_mut(dst_width_padded * BYTES_PER_PIXEL)
             {
                 let (written, remainder) = row.split_at_mut(dst_width * BYTES_PER_PIXEL);
@@ -237,12 +264,17 @@ impl NtscEffectBuf {
         }
         if dst_height_padded != dst_height {
             let last_dst_rows =
-                &mut self.dst[(dst_width_padded * BYTES_PER_PIXEL) * (dst_height_padded - 2)..];
+                &mut self.effect_dst[(dst_width_padded * BYTES_PER_PIXEL) * (dst_height_padded - 2)..];
             let (second_last_dst_row, last_dst_row) =
                 last_dst_rows.split_at_mut(dst_width_padded * BYTES_PER_PIXEL);
             last_dst_row.copy_from_slice(second_last_dst_row);
         }
 
-        Ok(unsafe { Uint8Array::view(&self.dst) })
+        Ok(EffectOutput {
+            ptr: self.effect_dst.as_ptr(),
+            len: self.effect_dst.len(),
+            width: dst_width_padded,
+            height: dst_height_padded,
+        })
     }
 }

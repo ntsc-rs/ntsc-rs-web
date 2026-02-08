@@ -118,10 +118,10 @@ const encodePng = async(source: ImageData | VideoFrame | ImageBitmap, encodeAlph
     if (typeof encodeAlpha === 'boolean') {
         shouldEncodeAlpha = encodeAlpha;
     } else {
-        shouldEncodeAlpha = true;
+        shouldEncodeAlpha = false;
         for (let i = 3; i < pixels.length; i += 4) {
             if (pixels[i] !== 255) {
-                shouldEncodeAlpha = false;
+                shouldEncodeAlpha = true;
                 break;
             }
         }
