@@ -33,7 +33,7 @@
     - [x] Apply during processing
     - [ ] Show correct dimensions
     - [ ] Make "Resize to" apply to logically-vertical axis
-  - [ ] Negative audio timestamps cause muxer errors
+  - [x] Negative audio timestamps cause muxer errors
   - [ ] Variable framerate? :(
 - [ ] Test in Safari
 - [ ] Keyboard shortcuts

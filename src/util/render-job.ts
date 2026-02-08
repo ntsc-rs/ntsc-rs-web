@@ -177,6 +177,9 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
                         };
                         for await (const audioPacket of audioSink.packets()) {
                             if (signal.aborted) break;
+                            // Some videos can have audio that starts before timestamp 0. Mediabunny errors out when
+                            // muxing these, so drop them.
+                            if (audioPacket.timestamp < 0) continue;
                             await (audioSource as EncodedAudioPacketSource).add(audioPacket, config);
                             if (signal.aborted) break;
                         }
@@ -198,6 +201,10 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
                             if (signal.aborted) {
                                 sample.close();
                                 break;
+                            }
+                            if (sample.timestamp < 0) {
+                                sample.close();
+                                continue;
                             }
                             try {
                                 await (audioSource as AudioSampleSource).add(sample);
