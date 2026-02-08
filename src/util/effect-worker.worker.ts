@@ -2,6 +2,7 @@ import init, {
     NtscSettingsList,
     ResizeFilter,
     NtscEffectBuf,
+    Rotation,
     setPanicHook,
 } from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 
@@ -14,6 +15,7 @@ export type RenderFrame = {
     resizeHeight: number | null,
     resizeFilter: ResizeFilter,
     effectEnabled: boolean,
+    rotation: Rotation,
     frameNum: number,
     padToEven: boolean,
     outputRect: {
@@ -183,7 +185,7 @@ export type Formats = {
 };
 
 const renderFrame = async<F extends keyof Formats>(
-    {frame, resizeHeight, resizeFilter, effectEnabled, frameNum, padToEven, outputRect}: RenderFrame,
+    {frame, rotation, resizeHeight, resizeFilter, effectEnabled, frameNum, padToEven, outputRect}: RenderFrame,
     format: F,
 ): Promise<Formats[F]> => {
     checkEffectData(effectData);
@@ -213,16 +215,21 @@ const renderFrame = async<F extends keyof Formats>(
         // bajillion different race conditions because the committees who design these APIs never have to actually
         // use them.
         await frame.copyTo(sourceFrameWasm, {format: 'RGBX', colorSpace: 'srgb'});
+        // The rect must be in post-rotation coordinates because the Rust pipeline applies the effect after rotation.
+        // 90/270-deg rotations swap width and height.
+        const rotationSwaps = rotation === Rotation.Cw90 || rotation === Rotation.Cw270;
+        const frameWidth = rotationSwaps ? outputHeight : outputWidth;
+        const frameHeight = rotationSwaps ? outputWidth : outputHeight;
         const rect = outputRect ? {
-            top: Math.max(0, Math.min(Math.round(outputRect.top * outputHeight), outputHeight)),
-            left: Math.max(0, Math.min(Math.round(outputRect.left * outputWidth), outputWidth)),
-            bottom: Math.max(0, Math.min(Math.round(outputRect.bottom * outputHeight), outputHeight)),
-            right: Math.max(0, Math.min(Math.round(outputRect.right * outputWidth), outputWidth)),
+            top: Math.max(0, Math.min(Math.round(outputRect.top * frameHeight), frameHeight)),
+            left: Math.max(0, Math.min(Math.round(outputRect.left * frameWidth), frameWidth)),
+            bottom: Math.max(0, Math.min(Math.round(outputRect.bottom * frameHeight), frameHeight)),
+            right: Math.max(0, Math.min(Math.round(outputRect.right * frameWidth), frameWidth)),
         } : {
             top: 0,
             left: 0,
-            bottom: outputHeight,
-            right: outputWidth,
+            bottom: frameHeight,
+            right: frameWidth,
         };
         rect.bottom = Math.max(rect.bottom, rect.top);
         rect.right = Math.max(rect.right, rect.left);
@@ -233,6 +240,7 @@ const renderFrame = async<F extends keyof Formats>(
             resizeFilter,
             padToEven,
             effectEnabled,
+            rotation,
             rect.top,
             rect.right,
             rect.bottom,

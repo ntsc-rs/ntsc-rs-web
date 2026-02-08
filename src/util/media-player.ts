@@ -9,6 +9,7 @@ import type {ResizeFilter} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wra
 import type EffectWorkerPool from './effect-worker-pool';
 import Queue from './queue';
 import {VideoSampleSinkLike, WrappedInput} from './still-image-media';
+import {getRotation} from './effect-worker-pool';
 
 export class FrameEvent extends TypedEvent<'frame'> {
     frameTimestamp: number;
@@ -368,6 +369,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         const frameNum = this.frameRate * frame.timestamp;
         const getFrame = await this.effectPool.processFrame({
             frame: frame.toVideoFrame(),
+            rotation: getRotation(frame.rotation),
             frameNum,
             padToEven: false,
             ...this.pipelineSettings,
@@ -476,6 +478,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
                 const frameNum = this.frameRate * nextFrame.timestamp;
                 const getFrame = await this.effectPool.processFrame({
                     frame: videoFrame,
+                    rotation: getRotation(nextFrame.rotation),
                     frameNum,
                     padToEven: false,
                     ...this.pipelineSettings,
@@ -544,6 +547,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
             const frameNum = this.frameRate * frame.timestamp;
             const getFrame = await this.effectPool.processFrame({
                 frame: frame.toVideoFrame(),
+                rotation: getRotation(frame.rotation),
                 frameNum,
                 padToEven: false,
                 ...this.pipelineSettings,

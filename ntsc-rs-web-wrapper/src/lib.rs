@@ -6,7 +6,7 @@ extern crate alloc;
 
 use fast_image_resize::{
     FilterType, ResizeAlg, ResizeOptions, Resizer, SrcCropping,
-    images::{TypedCroppedImageMut, TypedImage},
+    images::TypedImage,
     pixels::U8x4,
 };
 use ntscrs::{
@@ -93,55 +93,53 @@ impl NtscEffectBuf {
         unsafe { Uint8Array::view_mut_raw(self.src.as_mut_ptr(), self.src.len()) }
     }
 
-    /// Apply the effect in-place on the contents of the source buffer, writing to and returning the destination buffer.
+    /// Apply the effect in-place on the contents of the source buffer, writing to and returning
+    /// the destination buffer.
+    ///
+    /// Pipeline: input -> [resize] -> [rotate] -> [effect] -> output.
+    /// Each optional step writes to its own intermediate buffer; the final result always ends up
+    /// in `self.effect_dst`.
     #[wasm_bindgen(js_name = "applyEffect")]
     pub fn apply_effect(
         &mut self,
         frame_num: usize,
-        dst_width: usize,
-        dst_height: usize,
+        resize_width: usize,
+        resize_height: usize,
         resize_filter: ResizeFilter,
         pad_to_even: bool,
         effect_enabled: bool,
+        rotation: Rotation,
         rect_top: u32,
         rect_right: u32,
         rect_bottom: u32,
         rect_left: u32,
     ) -> Result<EffectOutput, String> {
-        // Resize the output buffer
         const BYTES_PER_PIXEL: usize = pixel_bytes_for::<Rgbx, u8>();
 
-        let (dst_width_padded, dst_height_padded) = if pad_to_even {
-            (dst_width.div_ceil(2) * 2, dst_height.div_ceil(2) * 2)
+        // dst_width/dst_height are the resize target (pre-rotation). The actual frame dimensions after rotation may
+        // differ for 90/270 degrees.
+        let (frame_w, frame_h) = rotation.output_dimensions(resize_width, resize_height);
+
+        let (frame_w_padded, frame_h_padded) = if pad_to_even {
+            (frame_w.div_ceil(2) * 2, frame_h.div_ceil(2) * 2)
         } else {
-            (dst_width, dst_height)
+            (frame_w, frame_h)
         };
-        let new_dst_len = dst_width_padded * dst_height_padded * BYTES_PER_PIXEL;
+
+        let needs_resize = self.input_dimensions != (resize_width, resize_height);
+        let needs_rotate = rotation != Rotation::None;
+
+        // Allocate the final output buffer.
+        let new_dst_len = frame_w_padded * frame_h_padded * BYTES_PER_PIXEL;
         maybe_resize(&mut self.effect_dst, new_dst_len);
 
-        let buffers_same_size = self.input_dimensions == (dst_width, dst_height);
-        // Update the size of the intermediate buffer used for resizing
-        if buffers_same_size {
-            maybe_resize(&mut self.resize_dst, 0);
-        } else {
+        // Step 1: resize
+        if needs_resize {
             maybe_resize(
                 &mut self.resize_dst,
-                dst_width * dst_height * BYTES_PER_PIXEL,
+                resize_width * resize_height * BYTES_PER_PIXEL,
             );
-        }
 
-        let (resize_dst, resize_dst_dimensions) = if effect_enabled {
-            (&mut self.resize_dst, (dst_width as u32, dst_height as u32))
-        } else {
-            (
-                &mut self.effect_dst,
-                (dst_width_padded as u32, dst_height_padded as u32),
-            )
-        };
-
-        let effect_src = if buffers_same_size {
-            &self.src
-        } else {
             let resize_alg = match resize_filter {
                 ResizeFilter::Nearest => ResizeAlg::Nearest,
                 ResizeFilter::Bilinear => ResizeAlg::Convolution(FilterType::Bilinear),
@@ -160,46 +158,70 @@ impl NtscEffectBuf {
             )
             .map_err(|e| e.to_string())?;
             let mut dst_image = TypedImage::<'_, U8x4>::from_buffer(
-                resize_dst_dimensions.0,
-                resize_dst_dimensions.1,
-                resize_dst,
+                resize_width as u32,
+                resize_height as u32,
+                &mut self.resize_dst,
             )
             .map_err(|e| e.to_string())?;
 
-            if dst_width_padded != dst_width || dst_height_padded != dst_height {
-                let mut cropped_dst_image =
-                    TypedCroppedImageMut::new(dst_image, 0, 0, dst_width as u32, dst_height as u32)
-                        .map_err(|e| e.to_string())?;
-                self.resizer
-                    .resize_typed(&src_image, &mut cropped_dst_image, &resize_options)
-                    .map_err(|e| e.to_string())?;
-            } else {
-                self.resizer
-                    .resize_typed(&src_image, &mut dst_image, &resize_options)
-                    .map_err(|e| e.to_string())?;
-            }
-            &self.resize_dst
-        };
+            self.resizer
+                .resize_typed(&src_image, &mut dst_image, &resize_options)
+                .map_err(|e| e.to_string())?;
+        } else {
+            maybe_resize(&mut self.resize_dst, 0);
+        }
 
+        // Step 2: rotate
+        if needs_rotate {
+            maybe_resize(
+                &mut self.rotate_dst,
+                frame_w * frame_h * BYTES_PER_PIXEL,
+            );
+            let rotate_src = if needs_resize {
+                &*self.resize_dst
+            } else {
+                &*self.src
+            };
+            rotate::rotate(
+                rotate_src,
+                &mut self.rotate_dst,
+                resize_width,
+                resize_height,
+                rotation,
+            );
+        } else {
+            maybe_resize(&mut self.rotate_dst, 0);
+        }
+
+        // Step 3: effect
         if effect_enabled {
+            // Resolve the "current" buffer: the output of whichever pipeline step ran last.
+            // In every case this buffer holds exactly frame_w × frame_h pixels.
+            let pre_effect_src: &[u8] = if needs_rotate {
+                &self.rotate_dst
+            } else if needs_resize {
+                &self.resize_dst
+            } else {
+                &self.src
+            };
+
             let new_yiq_len =
-                YiqView::max_buf_length_for((dst_width, dst_height), self.effect.use_field);
+                YiqView::max_buf_length_for((frame_w, frame_h), self.effect.use_field);
             maybe_resize(&mut self.effect_buf, new_yiq_len);
 
             let mut view = YiqView::from_parts(
                 &mut self.effect_buf,
-                (dst_width, dst_height),
+                (frame_w, frame_h),
                 self.effect.use_field.to_yiq_field(frame_num),
             );
             view.set_from_strided_buffer::<Rgbx, u8, _>(
-                effect_src,
-                BlitInfo::from_full_frame(dst_width, dst_height, dst_width * BYTES_PER_PIXEL),
+                pre_effect_src,
+                BlitInfo::from_full_frame(frame_w, frame_h, frame_w * BYTES_PER_PIXEL),
                 (),
             );
             self.effect
                 .apply_effect_to_yiq(&mut view, frame_num, [1.0, 1.0]);
 
-            // The padded dimensions may not be the same as the un-padded ones
             let dst_rect = Rect::new(
                 rect_top as usize,
                 rect_left as usize,
@@ -207,22 +229,27 @@ impl NtscEffectBuf {
                 rect_right as usize,
             );
 
-            // If we're not filling in the entire destination frame with the applied effect, we're doing a split-screen
-            // and need to copy the post-resize, pre-effect frame "behind" it. This doesn't handle padding to even
-            // dimensions, but those two code paths should never overlap (we pad when rendering, but only use
-            // split-screen mode in the preview).
+            // If we're not filling the entire destination frame, we're in split-screen mode and
+            // need the post-resize/rotate, pre-effect frame as a backdrop. This does not handle
+            // padding to even dimensions, but those two code paths never overlap (we pad when
+            // rendering, split-screen only in the preview).
             if dst_rect.left != 0
                 || dst_rect.top != 0
-                || dst_rect.right != dst_width
-                || dst_rect.bottom != dst_height
+                || dst_rect.right != frame_w
+                || dst_rect.bottom != frame_h
             {
-                self.effect_dst.copy_from_slice(effect_src);
+                debug_assert!(
+                    frame_w_padded == frame_w && frame_h_padded == frame_h,
+                    "split-screen backdrop copy assumes no padding"
+                );
+                self.effect_dst[..pre_effect_src.len()].copy_from_slice(pre_effect_src);
             }
+
             let dst_blit_info = BlitInfo {
                 rect: dst_rect,
                 destination: (dst_rect.left, dst_rect.top),
-                row_bytes: dst_width_padded * 4,
-                other_buffer_height: dst_height_padded,
+                row_bytes: frame_w_padded * 4,
+                other_buffer_height: frame_h_padded,
                 flip_y: false,
             };
 
@@ -235,46 +262,70 @@ impl NtscEffectBuf {
         } else {
             maybe_resize(&mut self.effect_buf, 0);
 
-            if buffers_same_size {
-                // The effect itself is disabled and we're not doing any resizing. We need to directly copy
-                // the buffer.
-                if dst_width_padded != dst_width {
-                    // Leave room for padding.
-                    for (dst, src) in self
+            // When there is no padding, the last intermediate buffer and effect_dst are the
+            // same size, so we can swap them in O(1) instead of doing a full-frame memcpy.
+            // This is safe because JS gets a fresh Uint8Array view from inputBuffer() each
+            // frame and never retains it across applyEffect calls, so swapping self.src is
+            // fine too.
+            let no_padding =
+                frame_w_padded == frame_w && frame_h_padded == frame_h;
+            if no_padding {
+                if needs_rotate {
+                    std::mem::swap(&mut self.rotate_dst, &mut self.effect_dst);
+                } else if needs_resize {
+                    std::mem::swap(&mut self.resize_dst, &mut self.effect_dst);
+                } else {
+                    std::mem::swap(&mut self.src, &mut self.effect_dst);
+                }
+            } else {
+                let pre_effect_src: &[u8] = if needs_rotate {
+                    &self.rotate_dst
+                } else if needs_resize {
+                    &self.resize_dst
+                } else {
+                    &self.src
+                };
+
+                // Copy pre-effect source into the output buffer, accounting for possible
+                // padding. The zip naturally stops after frame_h rows (the real data),
+                // leaving the padded row for the height fixup below.
+                if frame_w_padded != frame_w {
+                    for (dst_row, src_row) in self
                         .effect_dst
-                        .chunks_exact_mut(dst_width_padded * BYTES_PER_PIXEL)
-                        .zip(self.src.chunks_exact(dst_width * BYTES_PER_PIXEL))
+                        .chunks_exact_mut(frame_w_padded * BYTES_PER_PIXEL)
+                        .zip(pre_effect_src.chunks_exact(frame_w * BYTES_PER_PIXEL))
                     {
-                        dst[..dst_width * BYTES_PER_PIXEL].copy_from_slice(src);
+                        dst_row[..frame_w * BYTES_PER_PIXEL].copy_from_slice(src_row);
                     }
                 } else {
-                    self.effect_dst[..self.src.len()].copy_from_slice(&self.src);
+                    self.effect_dst[..pre_effect_src.len()].copy_from_slice(pre_effect_src);
                 }
             }
         }
 
-        if dst_width_padded != dst_width {
+        // Padding fixup
+        if frame_w_padded != frame_w {
             for row in self
                 .effect_dst
-                .chunks_exact_mut(dst_width_padded * BYTES_PER_PIXEL)
+                .chunks_exact_mut(frame_w_padded * BYTES_PER_PIXEL)
             {
-                let (written, remainder) = row.split_at_mut(dst_width * BYTES_PER_PIXEL);
+                let (written, remainder) = row.split_at_mut(frame_w * BYTES_PER_PIXEL);
                 remainder.copy_from_slice(&written[written.len() - Rgbx::NUM_COMPONENTS..]);
             }
         }
-        if dst_height_padded != dst_height {
+        if frame_h_padded != frame_h {
             let last_dst_rows =
-                &mut self.effect_dst[(dst_width_padded * BYTES_PER_PIXEL) * (dst_height_padded - 2)..];
+                &mut self.effect_dst[(frame_w_padded * BYTES_PER_PIXEL) * (frame_h_padded - 2)..];
             let (second_last_dst_row, last_dst_row) =
-                last_dst_rows.split_at_mut(dst_width_padded * BYTES_PER_PIXEL);
+                last_dst_rows.split_at_mut(frame_w_padded * BYTES_PER_PIXEL);
             last_dst_row.copy_from_slice(second_last_dst_row);
         }
 
         Ok(EffectOutput {
             ptr: self.effect_dst.as_ptr(),
             len: self.effect_dst.len(),
-            width: dst_width_padded,
-            height: dst_height_padded,
+            width: frame_w_padded,
+            height: frame_h_padded,
         })
     }
 }

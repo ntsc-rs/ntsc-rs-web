@@ -30,7 +30,10 @@
 - [ ] Shot on an iPhone(tm) woooo baby
   - [ ] Some(?) .mov files don't seek
   - [ ] EXIF rotation
-  - [ ] Negative audio timestamps cause errors
+    - [x] Apply during processing
+    - [ ] Show correct dimensions
+    - [ ] Make "Resize to" apply to logically-vertical axis
+  - [ ] Negative audio timestamps cause muxer errors
   - [ ] Variable framerate? :(
 - [ ] Test in Safari
 - [ ] Keyboard shortcuts

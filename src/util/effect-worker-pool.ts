@@ -1,7 +1,7 @@
 import {Formats, WorkerSchema} from './effect-worker.worker';
 import Queue from './queue';
 import RpcDispatcher from './worker-rpc';
-import {ResizeFilter} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
+import {ResizeFilter, Rotation} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import {wasmModulePromise} from './ntsc-rs-module';
 
 export type EffectWorker = RpcDispatcher<WorkerSchema>;
@@ -24,6 +24,7 @@ export type RenderFrameSettings = {
     resizeHeight: number | null,
     resizeFilter: ResizeFilter,
     effectEnabled: boolean,
+    rotation: Rotation,
     effectSettings: Record<string, number | boolean>,
     padToEven: boolean,
     frameNum: number,
@@ -129,8 +130,9 @@ export default class EffectWorkerPool {
                 resizeHeight: settings.resizeHeight,
                 resizeFilter: settings.resizeFilter,
                 effectEnabled: settings.effectEnabled,
+                rotation: settings.rotation,
                 frameNum: settings.frameNum,
-                padToEven: true,
+                padToEven: settings.padToEven,
                 outputRect: settings.outputRect,
             }, [settings.frame]);
             await waitForRelease;
@@ -158,3 +160,17 @@ export default class EffectWorkerPool {
 }
 
 export const GLOBAL_WORKER_POOL = EffectWorkerPool.create();
+
+/**
+ * Return the `Rotation` that undoes a video frame's EXIF rotation.
+ * @param rotation The frame rotation, as a number.
+ * @returns The inverse rotation, as a `Rotation`.
+ */
+export const getRotation = (rotation: number): Rotation => {
+    switch (rotation) {
+        case 90: return Rotation.Cw90;
+        case 180: return Rotation.Cw180;
+        case 270: return Rotation.Cw270;
+        default: return Rotation.None;
+    }
+};

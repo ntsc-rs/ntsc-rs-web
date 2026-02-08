@@ -15,7 +15,7 @@ import {
     registerEncoder,
 } from 'mediabunny';
 import type {PipelineSettings} from './media-player';
-import EffectWorkerPool from './effect-worker-pool';
+import EffectWorkerPool, {getRotation} from './effect-worker-pool';
 import Queue from './queue';
 import {TypedEvent, TypedEventTarget} from './typed-events';
 import {AppVideoCodec} from '../app-state';
@@ -246,6 +246,7 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
                     frame.close();
                     const getFrame = await effectPool.processFrame({
                         frame: videoFrame,
+                        rotation: getRotation(frame.rotation),
                         frameNum,
                         padToEven,
                         ...settings.effectSettings,
