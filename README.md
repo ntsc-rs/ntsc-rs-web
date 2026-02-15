@@ -1,15 +1,17 @@
-# `create-preact`
+# ntsc-rs-web
 
-<h2 align="center">
-  <img height="256" width="256" src="./src/assets/preact.svg">
-</h2>
+This is the (experimental) web version of [ntsc-rs](https://github.com/ntsc-rs/ntsc-rs). It uses Preact, and is built via Vite.
 
-<h3 align="center">Get started using Preact and Vite!</h3>
+## Building
 
-## Getting Started
+To run a development server:
 
--   `npm run dev` - Starts a dev server at http://localhost:5173/
+```
+npm run dev
+```
 
--   `npm run build` - Builds for production, emitting to `dist/`
+To build into `dist`:
 
--   `npm run preview` - Starts a server at http://localhost:4173/ to test production build locally
+```
+npm run build
+```

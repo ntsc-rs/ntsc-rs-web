@@ -13,7 +13,7 @@ import type {StateChangeEvent} from './util/render-job';
 import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 import Directory from './util/signalize-fs';
-import SETTING_DESCRIPTORS from './generated/setting-descriptors';
+import SETTING_DESCRIPTORS from '../ntsc-rs-web-wrapper/build/setting-descriptors';
 import {wasmModulePromise} from './util/ntsc-rs-module';
 import Undoer from './util/undoer';
 

@@ -1,0 +1,18 @@
+# Rust build artifacts (rebuilt inside container)
+target
+build
+
+# Generated output (rebuilt inside container)
+generated
+
+# IDE / editor
+.vscode
+*.swp
+*~
+
+# Logs
+*.log
+
+# Docker (avoid recursive context)
+Dockerfile
+.dockerignore

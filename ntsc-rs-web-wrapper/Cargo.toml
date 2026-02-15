@@ -3,7 +3,7 @@ cargo-features = ["panic-immediate-abort"]
 [package]
 name = "ntsc-rs-web-wrapper"
 version = "0.1.0"
-authors = ["va_erie"]
+authors = ["valadaptive"]
 edition = "2024"
 
 [lib]
@@ -22,7 +22,7 @@ fast_image_resize = { version = "5.4", default-features = false }
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
 web-sys = { version = "0.3.83", features = ["console"] }
-ntscrs = { path = "../../ntscrs/crates/ntscrs", default-features = false }
+ntscrs = { git = "https://github.com/ntsc-rs/ntsc-rs", default-features = false }
 sval = { version = "2.14.1", features = ["std"] }
 sval_json = { version = "2.14.1", features = ["std"] }
 

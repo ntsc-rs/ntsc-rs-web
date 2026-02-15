@@ -7,7 +7,7 @@ import {useAppState} from '../../app-state';
 import {CheckboxToggle, Dropdown, Slider, SpinBox} from '../Widgets/Widgets';
 import classNames from 'clsx';
 import PresetManager from '../PresetManager/PresetManager';
-import SETTING_DESCRIPTORS from '../../generated/setting-descriptors';
+import SETTING_DESCRIPTORS from '../../../ntsc-rs-web-wrapper/build/setting-descriptors';
 
 export const SliderWithSpinBox = (
     {min, max, step, value, disabled, 'aria-labelledby': labelledBy}: {

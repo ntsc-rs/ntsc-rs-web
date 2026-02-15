@@ -131,6 +131,7 @@ checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 [[package]]
 name = "macros"
 version = "0.1.0"
+source = "git+https://github.com/ntsc-rs/ntsc-rs#17e9a732584b5d94245ee814aab4f8da24ad3f67"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -170,6 +171,7 @@ dependencies = [
 [[package]]
 name = "ntscrs"
 version = "0.1.2"
+source = "git+https://github.com/ntsc-rs/ntsc-rs#17e9a732584b5d94245ee814aab4f8da24ad3f67"
 dependencies = [
  "fearless_simd",
  "hifijson",

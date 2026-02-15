@@ -8,4 +8,4 @@ wasm-bindgen --target web --out-dir build --omit-default-module-path target/wasm
 wasm-bindgen --target web --out-dir build --omit-default-module-path --out-name ntsc_rs_web_wrapper_relaxed.wasm target/wasm32-unknown-unknown/release-relaxed-simd/ntsc_rs_web_wrapper.wasm
 wasm-opt -O4 build/ntsc_rs_web_wrapper_bg.wasm -o build/ntsc_rs_web_wrapper_bg.wasm
 wasm-opt -O4 build/ntsc_rs_web_wrapper_relaxed.wasm -o build/ntsc_rs_web_wrapper_relaxed.wasm
-node ../gen-settings-list.mjs
+node gen-settings-list.mjs
