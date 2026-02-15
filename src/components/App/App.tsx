@@ -6,10 +6,10 @@ import TabbedPanel from '../TabbedPanel/TabbedPanel';
 import RenderSettingsPane from '../RenderSettingsPane/RenderSettingsPane';
 import ResizablePanel from '../ResizablePanel/ResizablePanel';
 import DisclaimerModal from '../DisclaimerModal/DisclaimerModal';
-import useMediaQuery from '../../util/use-media-query';
+import {useAppState} from '../../app-state';
 
 const App = () => {
-    const isPortrait = useMediaQuery('(orientation: portrait)');
+    const {isPortrait} = useAppState();
 
     return <div className={style.app}>
         <ResizablePanel

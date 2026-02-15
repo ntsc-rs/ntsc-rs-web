@@ -93,6 +93,7 @@ export class AppState {
     private undoer: Undoer<SettingsObj>;
     private isUndoing = true;
 
+    isPortrait: ReadonlySignal<boolean>;
     disclaimerModalOpen = signal(true);
 
     constructor() {
@@ -208,6 +209,17 @@ export class AppState {
                 this.renderJobs.value = {state: 'error', error};
             },
         );
+
+        const mediaQuery = matchMedia('(orientation: portrait)');
+        const isPortrait = signal(mediaQuery.matches);
+        const onQueryChange = (event: MediaQueryListEvent) => {
+            isPortrait.value = event.matches;
+        };
+        mediaQuery.addEventListener('change', onQueryChange);
+        this.isPortrait = isPortrait;
+        this.cleanupCallbacks.push(() => {
+            mediaQuery.removeEventListener('change', onQueryChange);
+        });
     }
 
     settingsFromObject(settingsObj: SettingsObj) {

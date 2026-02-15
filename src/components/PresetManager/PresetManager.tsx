@@ -56,6 +56,11 @@ type PresetTreeContextType = {
     onNewDirNameSet: (handle: PartialHandle, name: string) => void;
     onMovePreset: (item: DragItem<PresetDragData>, targetDir: {dir: Directory, path: string}) => void;
     onDropPresets: (items: DataTransferItemList, targetDir: Directory) => void;
+    handleSaveToLibrary: () => void;
+    handleOverwrite: () => void;
+    handleNewFolder: () => void;
+    handleImport: () => void;
+    handleReload: () => void;
 };
 
 const PresetTreeContext = createContext<PresetTreeContextType | null>(null);
@@ -1014,9 +1019,56 @@ const SettingsActions = (): JSX.Element => {
     );
 };
 
+const PresetLibraryManager = ({contextValue}: {
+    contextValue: PresetTreeContextType,
+}) => {
+    const appState = useAppState();
+    const {presetsDir, selectedPreset} = appState.presetsState;
+    const canOverwrite = !selectedPreset.value || !contextValue.isModified.value;
+
+    return <div className={classNames(style.libraryInner)}>
+        <DragDropProvider>
+            <PresetTreeContext.Provider value={contextValue}>
+                <DroppableRootList presetsDir={presetsDir} />
+            </PresetTreeContext.Provider>
+        </DragDropProvider>
+        <div className={style.libraryToolbar}>
+            <Button
+                onClick={contextValue.handleSaveToLibrary}
+                title="Save current settings as new preset in library"
+            >
+                Save As
+            </Button>
+            <Button
+                onClick={contextValue.handleOverwrite}
+                disabled={canOverwrite}
+                title="Overwrite selected preset with current settings"
+            >
+                Overwrite
+            </Button>
+            <Button
+                onClick={contextValue.handleNewFolder}
+                title="Create new folder in library"
+            >
+                New Folder
+            </Button>
+            <Button
+                onClick={contextValue.handleImport}
+                title="Import preset files into library"
+            >
+                Import
+            </Button>
+            <Button onClick={contextValue.handleReload} title="Reload library">
+                Reload
+            </Button>
+        </div>
+    </div>;
+};
+
 const PresetManager = (): JSX.Element => {
     const appState = useAppState();
-    const {presetsDir, selectedPreset, presetsPanelOpen} = appState.presetsState;
+    const {presetsState, isPortrait} = appState;
+    const {presetsPanelOpen} = presetsState;
 
     const contextValue = usePresetManagerState();
 
@@ -1025,77 +1077,42 @@ const PresetManager = (): JSX.Element => {
         void appState.initPresetsDir();
     }, []);
 
-    const libraryHeader = (
-        <button className={style.panelHeader} onClick={contextValue.togglePanel}>
-            <Icon
-                className={style.headerCollapseIcon}
-                type={presetsPanelOpen.value ? 'arrow-down' : 'arrow-right'}
-                title={presetsPanelOpen.value ? 'Collapse' : 'Expand'}
-                size={16}
-            />
-            <span className={style.headerTitle}>Preset library</span>
-        </button>
-    );
+    return useMemo(() => {
+        const libraryHeader = (
+            <button className={style.panelHeader} onClick={contextValue.togglePanel}>
+                <Icon
+                    className={style.headerCollapseIcon}
+                    type={presetsPanelOpen.value ? 'arrow-down' : 'arrow-right'}
+                    title={presetsPanelOpen.value ? 'Collapse' : 'Expand'}
+                    size={16}
+                />
+                <span className={style.headerTitle}>Preset library</span>
+            </button>
+        );
 
-    const canOverwrite = !selectedPreset.value || !contextValue.isModified.value;
-
-    return useMemo(() => (
-        <div className={style.presetManager}>
+        return <div className={style.presetManager}>
             <SettingsActions />
 
             {presetsPanelOpen.value ?
-                <ResizablePanel
-                    className={style.panelBody}
-                    initialSize="400px"
-                    minSize="200px"
-                    maxSize="75vh"
-                    edge="top"
-                >
-                    <div className={style.librarySection}>
+                isPortrait.value ?
+                    <div className={style.fullHeightPanel}>
                         {libraryHeader}
-                        <div className={classNames(style.libraryInner)}>
-                            <DragDropProvider>
-                                <PresetTreeContext.Provider value={contextValue}>
-                                    <DroppableRootList presetsDir={presetsDir} />
-                                </PresetTreeContext.Provider>
-                            </DragDropProvider>
-                            <div className={style.libraryToolbar}>
-                                <Button
-                                    onClick={contextValue.handleSaveToLibrary}
-                                    title="Save current settings as new preset in library"
-                                >
-                                    Save As
-                                </Button>
-                                <Button
-                                    onClick={contextValue.handleOverwrite}
-                                    disabled={canOverwrite}
-                                    title="Overwrite selected preset with current settings"
-                                >
-                                    Overwrite
-                                </Button>
-                                <Button
-                                    onClick={contextValue.handleNewFolder}
-                                    title="Create new folder in library"
-                                >
-                                    New Folder
-                                </Button>
-                                <Button
-                                    onClick={contextValue.handleImport}
-                                    title="Import preset files into library"
-                                >
-                                    Import
-                                </Button>
-                                <Button onClick={contextValue.handleReload} title="Reload library">
-                                    Reload
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </ResizablePanel> :
+                        <PresetLibraryManager contextValue={contextValue} />
+                    </div> :
+                    <ResizablePanel
+                        className={style.panelBody}
+                        initialSize="400px"
+                        minSize="200px"
+                        maxSize="75vh"
+                        edge="top"
+                    >
+                        {libraryHeader}
+                        <PresetLibraryManager contextValue={contextValue} />
+                    </ResizablePanel> :
                 libraryHeader
             }
-        </div>
-    ), [contextValue, presetsDir, canOverwrite, presetsPanelOpen.value]);
+        </div>;
+    }, [contextValue, isPortrait.value, presetsPanelOpen.value]);
 };
 
 export default PresetManager;

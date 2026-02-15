@@ -37,11 +37,10 @@
   - [x] Negative audio timestamps cause muxer errors
   - [ ] Variable framerate? :(
 - [ ] Test in Safari
-- [ ] Keyboard shortcuts
-- [ ] Some sort of demo image or video
 - [x] Drag and drop presets
 - [x] PWA
-- [ ] Weirdness with vertical stacked resizable panels on mobile
+  - [ ] The "Ready to work offline" prompt could be off-putting if displayed the first time the user loads the app
+- [x] Weirdness with vertical stacked resizable panels on mobile
 - [ ] Restart WASM on panic
 - [x] Fix vertical slider in Chrome
 - [ ] Display warning if your browser (e.g. Firefox on Android) does not support decoding (or encoding!) anything
@@ -55,3 +54,5 @@ Can be deferred to later:
 - [ ] Pinch to zoom
 - [ ] Notify on render completion
 - [ ] The "unsupported media" error message should also let you drop files into it
+- [ ] Keyboard shortcuts
+- [ ] Some sort of demo image or video

@@ -2,6 +2,16 @@
 
 .preset-manager {
     border-top: 1px solid theme.$divider;
+    display: flex;
+    flex-direction: column;
+}
+
+// For mobile, don't make it resizable
+.full-height-panel {
+    border-top: 1px solid theme.$divider;
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
 }
 
 .panel-header {
@@ -33,6 +43,7 @@
     padding: 0.5rem theme.$pane-padding;
     border-bottom: 1px solid theme.$divider;
     display: flex;
+    flex: 0 0 auto;
 
     &.open {
         border-bottom: none;
@@ -76,7 +87,7 @@
 
 .preset-list {
     @include theme.fade(background-color, border-color);
-    flex: 1 1 0;
+    flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
