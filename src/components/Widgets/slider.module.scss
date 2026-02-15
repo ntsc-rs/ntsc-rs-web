@@ -60,6 +60,17 @@ $thumb-d: 16px;
         width: $thumb-d; height: $track-w;
         --track-h: auto;
         --track-w: #{$track-h};
+
+        &::-webkit-slider-runnable-track {
+            background: linear-gradient(var(--fill-c), var(--fill-c))
+                0 100% / 100% var(--sx) no-repeat var(--track-c);
+        }
+
+        &::-webkit-slider-thumb {
+            margin-top: 0;
+            margin-left: .5*($track-h - $thumb-d);
+            @include thumb
+        }
     }
 
     touch-action: none;

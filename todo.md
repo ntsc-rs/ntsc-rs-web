@@ -42,6 +42,9 @@
 - [x] Drag and drop presets
 - [ ] PWA
 - [ ] Weirdness with vertical stacked resizable panels on mobile
+- [ ] Restart WASM on panic
+- [x] Fix vertical slider in Chrome
+- [ ] Display warning if your browser (e.g. Firefox on Android) does not support decoding (or encoding!) anything
 
 Can be deferred to later:
 - [ ] Image-sequence output in Chrome (the only browser with a directory picker)
