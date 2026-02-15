@@ -4,34 +4,20 @@ import VideoPlayer from '../VideoPlayer/VideoPlayer';
 import SettingsPane from '../SettingsList/SettingsList';
 import TabbedPanel from '../TabbedPanel/TabbedPanel';
 import RenderSettingsPane from '../RenderSettingsPane/RenderSettingsPane';
-import {useEffect, useState} from 'preact/hooks';
 import ResizablePanel from '../ResizablePanel/ResizablePanel';
 import DisclaimerModal from '../DisclaimerModal/DisclaimerModal';
+import useMediaQuery from '../../util/use-media-query';
 
 const App = () => {
-    // I would've liked to use useSignal here but it can't take an initializer function
-    const [isPortrait, setIsPortrait] = useState(() => window.matchMedia('(orientation: portrait)').matches);
-
-    useEffect(() => {
-        const mediaQueryList = window.matchMedia('(orientation: portrait)');
-
-        const handleOrientationChange = (event: MediaQueryListEvent) => {
-            setIsPortrait(event.matches);
-        };
-
-        mediaQueryList.addEventListener('change', handleOrientationChange);
-        return () => {
-            mediaQueryList.removeEventListener('change', handleOrientationChange);
-        };
-    }, [isPortrait]);
+    const isPortrait = useMediaQuery('(orientation: portrait)');
 
     return <div className={style.app}>
         <ResizablePanel
             className={style.sidePanel}
             initialSize={500}
-            minSize={isPortrait ? 200 : 400}
-            maxSize={isPortrait ? '75vh' : '75vw'}
-            edge={isPortrait ? 'top' : 'right'}
+            minSize={isPortrait.value ? 200 : 400}
+            maxSize={isPortrait.value ? '75vh' : '75vw'}
+            edge={isPortrait.value ? 'top' : 'right'}
         >
             <TabbedPanel
                 tabs={[

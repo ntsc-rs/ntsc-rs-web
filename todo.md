@@ -40,7 +40,7 @@
 - [ ] Keyboard shortcuts
 - [ ] Some sort of demo image or video
 - [x] Drag and drop presets
-- [ ] PWA
+- [x] PWA
 - [ ] Weirdness with vertical stacked resizable panels on mobile
 - [ ] Restart WASM on panic
 - [x] Fix vertical slider in Chrome
