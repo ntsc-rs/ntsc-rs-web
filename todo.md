@@ -13,7 +13,7 @@
 - [x] Fix the keyboard navigation thing for SpinBox and backport to Glypht probably
 - [x] Split-screen preview mode
 - [x] Polyfill AAC encoder for Chrome (and apparently other browsers too)
-- [ ] Document limitations
+- [x] Document limitations
   - No interlaced video
   - No lossless video
   - Chroma subsampling always enabled

@@ -6,6 +6,7 @@ import TabbedPanel from '../TabbedPanel/TabbedPanel';
 import RenderSettingsPane from '../RenderSettingsPane/RenderSettingsPane';
 import {useEffect, useState} from 'preact/hooks';
 import ResizablePanel from '../ResizablePanel/ResizablePanel';
+import DisclaimerModal from '../DisclaimerModal/DisclaimerModal';
 
 const App = () => {
     // I would've liked to use useSignal here but it can't take an initializer function
@@ -52,6 +53,7 @@ const App = () => {
         <div className={style.displayPane}>
             <VideoPlayer />
         </div>
+        <DisclaimerModal />
     </div>;
 };
 

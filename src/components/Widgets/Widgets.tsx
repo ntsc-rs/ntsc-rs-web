@@ -3,6 +3,7 @@ import slider from './slider.module.scss';
 
 import {
     createContext,
+    type AnchorHTMLAttributes,
     type ButtonHTMLAttributes,
     type ComponentChildren,
     type InputHTMLAttributes,
@@ -585,6 +586,18 @@ export const Button = ({children, className, ...props}: {
                 {children}
             </span>
         </button>
+    );
+};
+
+export const LinkButton = ({children, className, ...props}: {
+    children: ComponentChildren
+} & AnchorHTMLAttributes<HTMLAnchorElement>) => {
+    return (
+        <a {...props} className={classNames(style.button, className)}>
+            <span className={style.buttonContents}>
+                {children}
+            </span>
+        </a>
     );
 };
 

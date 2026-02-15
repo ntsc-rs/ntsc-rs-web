@@ -93,6 +93,8 @@ export class AppState {
     private undoer: Undoer<SettingsObj>;
     private isUndoing = true;
 
+    disclaimerModalOpen = signal(true);
+
     constructor() {
         const flatSettings: Record<string, Signal<number | boolean>> = {};
         const defaultSettings: SettingsObj = {};

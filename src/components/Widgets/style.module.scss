@@ -152,13 +152,6 @@ input[type=number].spinbox-field, input[type=text].spinbox-field {
     }
 }
 
-.button-contents {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    min-height: 24px;
-}
-
 .checkbox-toggle {
     display: inline-flex;
     align-items: center;
@@ -178,6 +171,16 @@ input[type=number].spinbox-field, input[type=text].spinbox-field {
     font-weight: 500;
     padding: 0.25rem 0.5rem;
     height: 2rem;
+    box-sizing: border-box;
+
+    @include theme.fade(background-color, color);
+
+    display: inline-flex;
+    margin: 0;
+    line-height: 1;
+    appearance: none;
+
+    color: theme.$text;
 
     @include buttons.button-color(theme.$primary, theme.$primary-hover, theme.$primary-active, theme.$primary-muted, white);
 
@@ -196,6 +199,14 @@ input[type=number].spinbox-field, input[type=text].spinbox-field {
     &.red {
         @include buttons.button-color(theme.$red, theme.$red-hover, theme.$red-active, theme.$red-muted, white);
     }
+}
+
+.button-contents {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    gap: 0.25rem;
 }
 
 input[type=text].small {
