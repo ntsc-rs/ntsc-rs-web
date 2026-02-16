@@ -1,6 +1,6 @@
 import './style.scss';
 
-import type {JSX} from 'preact';
+import type {JSX, Ref} from 'preact';
 import classNames from 'clsx';
 
 import {Motif} from '../../util/motif';
@@ -25,6 +25,7 @@ export type IconType =
     | 'github'
     | 'globe'
     | 'link'
+    | 'menu'
     | 'paste'
     | 'pause'
     | 'play'
@@ -86,6 +87,7 @@ export const IconButton = ({
     disabled,
     motif,
     className,
+    innerRef,
 }: {
     type: IconType;
     title: string;
@@ -95,6 +97,7 @@ export const IconButton = ({
     disabled?: boolean;
     motif?: Motif;
     className?: string;
+    innerRef?: Ref<HTMLButtonElement>;
 }): JSX.Element => {
     return (
         <button
@@ -115,6 +118,7 @@ export const IconButton = ({
             title={title}
             disabled={disabled}
             tabIndex={0}
+            ref={innerRef}
         >
             <Icon
                 type={type}

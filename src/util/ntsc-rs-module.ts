@@ -6,7 +6,7 @@ import init from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 export const wasmModulePromise = (async() => {
     const supportsRelaxedSimd = await relaxedSimd();
     const moduleUrl = supportsRelaxedSimd ?
-        new URL('../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper_relaxed.wasm', import.meta.url) :
+        new URL('../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper_relaxed_bg.wasm', import.meta.url) :
         new URL('../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper_bg.wasm', import.meta.url);
 
 

@@ -24,7 +24,6 @@ const DisclaimerModal = () => {
         <ul>
             <li>No interlaced output. The web video encoding APIs don't support interlacing.</li>
             <li>No lossless output. Browsers only support lossy video formats.</li>
-            <li>Chroma subsampling is always enabled. This reduces the color resolution of the output, which may be noticeable on sharp edges.</li>
             <li>No integration with other video editing software. The desktop version comes in plugin form, and works with a wide variety of video editing software.</li>
         </ul>
 

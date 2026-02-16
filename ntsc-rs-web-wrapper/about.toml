@@ -16,3 +16,8 @@ accepted = [
     "MPL-2.0",
     "Ubuntu-font-1.0",
 ]
+targets = [
+    "wasm32-unknown-unknown"
+]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true

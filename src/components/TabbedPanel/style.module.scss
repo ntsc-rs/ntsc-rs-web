@@ -37,6 +37,13 @@
     }
 }
 
+.auxiliary-items {
+    display: flex;
+    align-items: center;
+    margin-right: auto;
+    padding-bottom: 0.5rem;
+}
+
 .panel {
     flex: 1 1 0;
     display: flex;

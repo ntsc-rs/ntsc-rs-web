@@ -21,7 +21,7 @@
   - Slower encoding on Firefox and maybe Safari
   - Must stay "tabbed in" on mobile to avoid the tab being suspended
   - Phone videos will be really janky. Not a web thing specifically, but this is the first version that works on phones
-- [ ] License list
+- [x] License list
 - [ ] Documentation
 - [x] Compile with and without relaxed SIMD (Saf*ri doesn't support it)
 - [x] Actually investigate why rendering is so slow on Firefox
@@ -39,7 +39,7 @@
 - [ ] Test in Safari
 - [x] Drag and drop presets
 - [x] PWA
-  - [ ] The "Ready to work offline" prompt could be off-putting if displayed the first time the user loads the app
+  - [x] The "Ready to work offline" prompt could be off-putting if displayed the first time the user loads the app
 - [x] Weirdness with vertical stacked resizable panels on mobile
 - [x] Restart WASM on panic (well not really, but we do display an error message now)
 - [x] Fix vertical slider in Chrome

@@ -17,7 +17,6 @@ class AACEncoder extends CustomAudioEncoder {
     private frameSize = 0;
     private bufferedSamples = 0;
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     static supports(codec: AudioCodec, _config: AudioEncoderConfig): boolean {
         // TODO: pass config to wasm to check if we *really* support it, but how to instantiate it? This method needs to
         // be synchronous.

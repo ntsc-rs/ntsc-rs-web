@@ -72,15 +72,15 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     # Run wasm-bindgen and wasm-opt. Output goes to a path outside the cache
     # mount so it is available to later stages.
     mkdir -p /wasm-output && \
+    mkdir -p /wasm-output-relaxed && \
     wasm-bindgen --target web --out-dir /wasm-output --omit-default-module-path \
         target/wasm32-unknown-unknown/release/ntsc_rs_web_wrapper.wasm && \
-    wasm-bindgen --target web --out-dir /wasm-output --omit-default-module-path \
-        --out-name ntsc_rs_web_wrapper_relaxed.wasm \
+    wasm-bindgen --target web --out-dir /wasm-output-relaxed --omit-default-module-path \
         target/wasm32-unknown-unknown/release-relaxed-simd/ntsc_rs_web_wrapper.wasm && \
     wasm-opt -O4 /wasm-output/ntsc_rs_web_wrapper_bg.wasm \
         -o /wasm-output/ntsc_rs_web_wrapper_bg.wasm && \
-    wasm-opt -O4 /wasm-output/ntsc_rs_web_wrapper_relaxed.wasm \
-        -o /wasm-output/ntsc_rs_web_wrapper_relaxed.wasm && \
+    wasm-opt -O4 /wasm-output-relaxed/ntsc_rs_web_wrapper_bg.wasm \
+        -o /wasm-output/ntsc_rs_web_wrapper_relaxed_bg.wasm && \
     mkdir -p /about-output && \
     cargo about generate --format=json -o /about-output/about.json
 

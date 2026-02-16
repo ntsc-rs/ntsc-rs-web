@@ -1,0 +1,86 @@
+@use '../../css/theme.scss' as theme;
+
+.credits-modal {
+    padding: 0.5rem 1rem;
+    overflow: auto;
+    max-height: 100%;
+    width: 100ch;
+    max-width: 100%;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 0;
+}
+
+.error {
+    color: theme.$text-detail;
+    font-style: italic;
+    padding: 1rem 0;
+}
+
+.license-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.license-item {
+    border-bottom: 1px solid theme.$divider;
+
+    &:last-child {
+        border-bottom: none;
+    }
+}
+
+.license-header {
+    display: flex;
+    align-items: center;
+    font-weight: normal;
+    gap: 0.5rem;
+    padding: 0.375rem 0.5rem;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: theme.$text;
+    line-height: 1.5;
+    overflow: auto;
+
+    &:hover {
+        background-color: theme.$toggle-hover;
+    }
+
+    &:disabled {
+        cursor: default;
+    }
+}
+
+.dep-name {
+    font-weight: 600;
+    flex: 0 1 auto;
+}
+
+.dep-version {
+    color: theme.$text-detail;
+    flex: 0 0 auto;
+}
+
+.dep-license {
+    color: theme.$text-detail;
+    margin-left: auto;
+    flex: 0 0 auto;
+}
+
+.license-text {
+    background-color: theme.$base-color-tertiary;
+    border-radius: theme.$radius;
+    padding: 0.75rem;
+    margin: 0 0 0.5rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: min(40rem, 75vh);
+    overflow-y: auto;
+}

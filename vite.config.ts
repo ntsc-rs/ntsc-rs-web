@@ -94,19 +94,30 @@ export default defineConfig({
                 const outDir = options.dir ?? 'dist';
                 const viteLicensePath = `${outDir}/.vite/licenses.json`;
                 const rustLicensePath = './ntsc-rs-web-wrapper/build/about.json';
+                const ffmpegLicensePath = './aac-codec/FFmpeg/COPYING.LGPLv2.1';
 
                 const viteLicenses = JSON.parse(fs.readFileSync(viteLicensePath, 'utf-8')) as LicenseEntry[];
                 const rustLicenses = JSON.parse(fs.readFileSync(rustLicensePath, 'utf-8')) as LicenseList;
+                const lgplText = fs.readFileSync(ffmpegLicensePath, 'utf-8');
 
-                let nextLicenseIndex = 0;
-                const licenseTexts = new Map<string, number>();
+                let nextLicenseIndex = 1;
+                const licenseTexts = new Map<string, number>([[lgplText, 0]]);
                 const licensesOut: {
                     js: CreditsLicense[],
                     rust: CreditsLicense[],
+                    c: CreditsLicense[],
                     texts: string[],
                 } = {
                     js: [],
                     rust: [],
+                    c: [
+                        {
+                            name: 'ffmpeg',
+                            version: '8.0',
+                            identifier: 'LGPLv2.1',
+                            text: 0,
+                        },
+                    ],
                     texts: [],
                 };
                 for (const license of viteLicenses) {

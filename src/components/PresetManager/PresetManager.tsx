@@ -1073,9 +1073,11 @@ const PresetManager = (): JSX.Element => {
     const contextValue = usePresetManagerState();
 
     useEffect(() => {
-        // It's fine to call this with no checks, since it does nothing if the presets dir is loading or loaded
-        void appState.initPresetsDir();
-    }, []);
+        if (presetsPanelOpen.value) {
+            // It's fine to call this with no checks, since it does nothing if the presets dir is loading or loaded
+            void appState.initPresetsDir();
+        }
+    }, [presetsPanelOpen.value]);
 
     return useMemo(() => {
         const libraryHeader = (

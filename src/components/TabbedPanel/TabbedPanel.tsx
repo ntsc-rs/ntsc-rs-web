@@ -14,11 +14,11 @@ type Tab = {
 type TabbedPanelProps<T extends readonly Tab[]> = {
     tabs: T,
     initialTab: T[number]['id'] | null,
-    alignment?: 'start' | 'end',
     className?: string,
+    auxiliaryItems?: ComponentChild,
 };
 
-const TabbedPanel = <T extends readonly Tab[]>({tabs, initialTab, alignment, className}: TabbedPanelProps<T>) => {
+const TabbedPanel = <T extends readonly Tab[]>({tabs, initialTab, className, auxiliaryItems}: TabbedPanelProps<T>) => {
     const activeTabID = useSignal(initialTab);
 
     const tabsByID = useComputed(() => {
@@ -34,11 +34,12 @@ const TabbedPanel = <T extends readonly Tab[]>({tabs, initialTab, alignment, cla
 
     return (
         <div className={classNames(className, style.tabbedPanel)}>
-            <div className={classNames({
-                [style.tabs]: true,
-                [style.alignStart]: alignment === 'start',
-                [style.alignEnd]: alignment === 'end',
-            })}>
+            <div className={style.tabs}>
+                {auxiliaryItems && (
+                    <div className={style.auxiliaryItems}>
+                        {auxiliaryItems}
+                    </div>
+                )}
                 {tabs.map(tab => (
                     <div
                         key={tab.id}

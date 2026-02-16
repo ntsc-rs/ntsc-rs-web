@@ -10,15 +10,17 @@ import {
     type JSX,
     type Ref,
     type TargetedEvent,
+    h,
 } from 'preact';
 import {useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef} from 'preact/hooks';
 import {useSignal, type Signal} from '@preact/signals';
 import classNames from 'clsx';
-import {computePosition, flip} from '@floating-ui/dom';
+import {flip, ReferenceElement} from '@floating-ui/dom';
 import Icon, {IconType} from '../Icon/Icon';
 import {Overlay} from '../Overlay/Overlay';
 import {Motif} from '../../util/motif';
 import {formatTimestamp, parseTimestamp} from '../../util/format-timestamp';
+import useFloating from '../../util/floating';
 
 export const Dropdown = <T extends string | number>({
     value,
@@ -635,7 +637,8 @@ export type ContextMenuItem = {
     label: string;
     icon?: IconType;
     disabled?: boolean;
-    onClick: () => void;
+    href?: string;
+    onClick?: () => void;
 };
 
 type ContextMenuState = {
@@ -660,15 +663,15 @@ export const useContextMenu = (): ((event: MouseEvent, items: ContextMenuItem[])
     return ctx.show;
 };
 
-const ContextMenuContent = ({
-    state,
+export const Menu = ({
+    refElement,
+    items,
     onClose,
 }: {
-    state: ContextMenuState;
+    refElement: ReferenceElement;
+    items: ContextMenuItem[];
     onClose: () => void;
 }): JSX.Element | null => {
-    const menuRef = useRef<HTMLDivElement>(null);
-
     // Close on escape key
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
@@ -686,30 +689,21 @@ const ContextMenuContent = ({
         onClose();
     }, [onClose]);
 
+    const {reference, floating} = useFloating(() => ({
+        placement: 'bottom-start',
+        middleware: [
+            flip({fallbackPlacements: ['bottom-end', 'top-start', 'top-end']}),
+        ],
+    }));
+    useLayoutEffect(() => {
+        reference(refElement);
+    }, [refElement]);
+
     const onMenuOpen = useCallback((element: HTMLDivElement | null) => {
-        menuRef.current = element;
+        floating(element);
         if (!element) return;
         element.focus();
-
-        // Create a virtual element at the click position
-        const virtualEl = {
-            getBoundingClientRect() {
-                return new DOMRect(state.x, state.y, 0, 0);
-            },
-        };
-
-        void computePosition(virtualEl, element, {
-            placement: 'bottom-start',
-            middleware: [
-                flip({fallbackPlacements: ['bottom-end', 'top-start', 'top-end']}),
-            ],
-        }).then(({x, y}) => {
-            if (menuRef.current) {
-                menuRef.current.style.left = `${x}px`;
-                menuRef.current.style.top = `${y}px`;
-            }
-        });
-    }, [state]);
+    }, []);
 
     return (
         <>
@@ -719,23 +713,26 @@ const ContextMenuContent = ({
                 onContextMenu={handleBackdropContextMenu}
             />
             <div ref={onMenuOpen} className={style.contextMenu} tabIndex={0}>
-                {state.items.map(item => (
-                    <button
-                        key={item.id}
-                        className={style.contextMenuItem}
-                        onClick={() => {
-                            if (!item.disabled) {
-                                item.onClick();
-                                onClose();
+                {items.map(item => h(
+                    item.href ? 'a' : 'button',
+                    {
+                        key: item.id,
+                        className: style.contextMenuItem,
+                        onClick: item.onClick && (
+                            () => {
+                                if (!item.disabled) {
+                                    item.onClick!();
+                                    onClose();
+                                }
                             }
-                        }}
-                        disabled={item.disabled}
-                    >
-                        {item.icon && (
-                            <Icon type={item.icon} title="" />
-                        )}
-                        <span className={style.contextMenuLabel}>{item.label}</span>
-                    </button>
+                        ),
+                        disabled: item.disabled,
+                        href: item.href,
+                    },
+                    item.icon && (
+                        <Icon type={item.icon} title="" />
+                    ),
+                    <span className={style.contextMenuLabel}>{item.label}</span>,
                 ))}
             </div>
         </>
@@ -760,8 +757,15 @@ export const ContextMenuProvider = ({children}: {children?: ComponentChildren}):
     }, [state]);
 
     const content = useMemo(() => {
-        if (!state.value) return null;
-        return <ContextMenuContent state={state.value} onClose={contextValue.close} />;
+        const stateValue = state.value;
+        if (!stateValue) return null;
+        // Create a virtual element at the click position
+        const virtualEl = {
+            getBoundingClientRect() {
+                return new DOMRect(stateValue.x, stateValue.y, 0, 0);
+            },
+        };
+        return <Menu refElement={virtualEl} items={stateValue.items} onClose={contextValue.close} />;
     }, [state.value, contextValue]);
 
     return (

@@ -146,7 +146,7 @@ export class WrappedInput extends TypedEventTarget<FrameRateChangeEvent> {
         }
 
         if (!(await videoTrack.canDecode())) {
-            throw new Error('Cannot decode video track');
+            throw new Error('Cannot decode video track. Try another browser?');
         }
 
 
