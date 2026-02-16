@@ -58,9 +58,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 # Copy real source and rebuild. `touch` ensures cargo sees the sources as
 # newer than the dummy that produced the cached artifacts.
-COPY src ./src
-COPY .cargo ./.cargo
-COPY about.toml ./
+COPY --parents src .cargo about.toml ./
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
