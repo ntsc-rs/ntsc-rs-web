@@ -9,7 +9,7 @@ use fast_image_resize::{
     images::TypedImage,
     pixels::U8x4,
 };
-use ntscrs::{
+use ntsc_rs::{
     NtscEffect, NtscEffectFullSettings,
     yiq_fielding::{BlitInfo, DeinterlaceMode, PixelFormat, Rect, Rgbx, YiqView, pixel_bytes_for},
 };

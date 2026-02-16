@@ -129,16 +129,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
 
 [[package]]
-name = "macros"
-version = "0.1.0"
-source = "git+https://github.com/ntsc-rs/ntsc-rs#17e9a732584b5d94245ee814aab4f8da24ad3f67"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "memchr"
 version = "2.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -155,27 +145,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "ntsc-rs-web-wrapper"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "fast_image_resize",
- "ntscrs",
- "sval",
- "sval_json",
- "wasm-bindgen",
- "wasm-bindgen-test",
- "web-sys",
-]
-
-[[package]]
-name = "ntscrs"
+name = "ntsc-rs"
 version = "0.1.2"
-source = "git+https://github.com/ntsc-rs/ntsc-rs#17e9a732584b5d94245ee814aab4f8da24ad3f67"
+source = "git+https://github.com/ntsc-rs/ntsc-rs#9c1731116f66794402c2777c718bebe75e00cfa1"
 dependencies = [
  "fearless_simd",
  "hifijson",
- "macros",
+ "ntsc-rs-macros",
  "num_cpus",
  "num_enum",
  "rand",
@@ -183,6 +159,30 @@ dependencies = [
  "siphasher",
  "sval",
  "sval_json",
+]
+
+[[package]]
+name = "ntsc-rs-macros"
+version = "0.1.0"
+source = "git+https://github.com/ntsc-rs/ntsc-rs#9c1731116f66794402c2777c718bebe75e00cfa1"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "ntsc-rs-web-wrapper"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "fast_image_resize",
+ "ntsc-rs",
+ "sval",
+ "sval_json",
+ "wasm-bindgen",
+ "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]

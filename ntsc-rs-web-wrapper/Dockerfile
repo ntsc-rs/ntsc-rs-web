@@ -41,7 +41,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
         | sed 's/.*"\(.*\)"/\1/' \
     ) && \
     echo "Installing wasm-bindgen-cli v${WASM_BINDGEN_VERSION}" && \
-    cargo install wasm-bindgen-cli --version "${WASM_BINDGEN_VERSION}"
+    cargo install --locked wasm-bindgen-cli --version "${WASM_BINDGEN_VERSION}" && \
+    cargo install --locked cargo-about --version 0.8.4
 
 # Pre-build all dependencies with a dummy source file so that the expensive
 # dependency compilation is cached in the BuildKit cache mount. Only the
@@ -58,6 +59,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 # Copy real source and rebuild. `touch` ensures cargo sees the sources as
 # newer than the dummy that produced the cached artifacts.
 COPY src ./src
+COPY about.toml ./
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
@@ -77,7 +79,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     wasm-opt -O4 /wasm-output/ntsc_rs_web_wrapper_bg.wasm \
         -o /wasm-output/ntsc_rs_web_wrapper_bg.wasm && \
     wasm-opt -O4 /wasm-output/ntsc_rs_web_wrapper_relaxed.wasm \
-        -o /wasm-output/ntsc_rs_web_wrapper_relaxed.wasm
+        -o /wasm-output/ntsc_rs_web_wrapper_relaxed.wasm && \
+    mkdir -p /about-output && \
+    cargo about generate --format=json -o /about-output/about.json
 
 # ---------------------------------------------------------------------------
 # Stage 2: Generate setting-descriptors.ts
@@ -101,4 +105,5 @@ RUN node gen-settings-list.mjs
 FROM scratch AS export
 
 COPY --from=wasm-builder /wasm-output                        /build/
+COPY --from=wasm-builder /about-output                        /build/
 COPY --from=settings-generator /build/generated               /build/

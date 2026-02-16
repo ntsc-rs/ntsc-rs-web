@@ -1,4 +1,4 @@
-use ntscrs::{
+use ntsc_rs::{
     NtscEffectFullSettings,
     settings::{EnumValue, SettingDescriptor, SettingKind, Settings as _, SettingsList},
 };

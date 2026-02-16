@@ -7,6 +7,10 @@ import {Motif} from '../../util/motif';
 import style from './style.module.scss';
 import {Button} from '../Widgets/Widgets';
 
+// This toast could be overwhelming, since it appears the first time the page is loaded. Not sure yet whether I want to
+// keep this or not.
+const SHOW_OFFLINE_READY = false;
+
 export default function PwaUpdatePrompt() {
     const {
         needRefresh: [needRefresh],
@@ -17,14 +21,14 @@ export default function PwaUpdatePrompt() {
     const addToast = useAddToast();
 
     useEffect(() => {
-        if (offlineReady) {
+        if (offlineReady && SHOW_OFFLINE_READY) {
             addToast({
                 motif: Motif.SUCCESS,
                 title: 'Ready to work offline',
                 timeout: 4000,
             });
         }
-    }, [offlineReady]);
+    }, [offlineReady, SHOW_OFFLINE_READY]);
 
     useEffect(() => {
         if (needRefresh) {
