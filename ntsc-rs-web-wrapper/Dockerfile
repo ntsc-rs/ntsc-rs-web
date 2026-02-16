@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.7-labs
 
 # ===========================================================================
 # Multi-stage Dockerfile for ntsc-rs-web-wrapper
