@@ -175,7 +175,6 @@ dependencies = [
 name = "ntsc-rs-web-wrapper"
 version = "0.1.0"
 dependencies = [
- "console_error_panic_hook",
  "fast_image_resize",
  "ntsc-rs",
  "sval",

@@ -53,12 +53,13 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/build/ntsc-rs-web-wrapper/target \
     cargo build --release --target wasm32-unknown-unknown && \
-    RUSTFLAGS="-Ctarget-feature=+bulk-memory,+simd128,+relaxed-simd" \
+    RUSTFLAGS="-Ctarget-feature=+bulk-memory,+simd128,+relaxed-simd -Zlocation-detail=none" \
     cargo build --profile release-relaxed-simd --target wasm32-unknown-unknown
 
 # Copy real source and rebuild. `touch` ensures cargo sees the sources as
 # newer than the dummy that produced the cached artifacts.
 COPY src ./src
+COPY .cargo ./.cargo
 COPY about.toml ./
 
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -66,7 +67,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/ntsc-rs-web-wrapper/target \
     touch src/lib.rs && \
     cargo build --release --target wasm32-unknown-unknown && \
-    RUSTFLAGS="-Ctarget-feature=+bulk-memory,+simd128,+relaxed-simd" \
+    RUSTFLAGS="-Ctarget-feature=+bulk-memory,+simd128,+relaxed-simd -Zlocation-detail=none" \
     cargo build --profile release-relaxed-simd --target wasm32-unknown-unknown && \
     # Run wasm-bindgen and wasm-opt. Output goes to a path outside the cache
     # mount so it is available to later stages.

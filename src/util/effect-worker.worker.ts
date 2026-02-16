@@ -73,6 +73,13 @@ export type WorkerSchema =
             message: string;
         };
         response: never;
+    }
+    | {
+        request: never;
+        response: {
+            name: 'panicked';
+            message: string;
+        };
     };
 
 const wasmMutex = new Queuetex(null);
@@ -97,7 +104,13 @@ const listener = async(event: MessageEvent) => {
             case 'init': {
                 effectData = (async() => {
                     const {memory} = await init({module_or_path: message.message.module});
-                    setPanicHook();
+                    setPanicHook((errMessage: string) => {
+                        postMessageFromWorker<WorkerSchema>({
+                            type: 'panicked',
+                            message: errMessage,
+                            originId: null,
+                        });
+                    });
 
                     return {
                         effect: new NtscEffectBuf(),

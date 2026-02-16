@@ -3,6 +3,7 @@ import Queue from './queue';
 import RpcDispatcher from './worker-rpc';
 import {ResizeFilter, Rotation} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import {wasmModulePromise} from './ntsc-rs-module';
+import {TypedEvent, TypedEventTarget} from './typed-events';
 
 export type EffectWorker = RpcDispatcher<WorkerSchema>;
 
@@ -36,15 +37,38 @@ export type RenderFrameSettings = {
     } | null,
 };
 
-export default class EffectWorkerPool {
+export class PanicEvent extends TypedEvent<'panic'> {
+    message: string;
+
+    constructor(message: string) {
+        super('panic');
+        this.message = message;
+    }
+}
+
+export default class EffectWorkerPool extends TypedEventTarget<PanicEvent> {
     private workers: EffectWorker[] = [];
     private queue: Queue<(worker: EffectWorker) => void> = new Queue();
     private effectSettingsPerWorker = new WeakMap<EffectWorker, Record<string, number | boolean>>();
     allWorkers: EffectWorker[] = [];
+    errorMessage: string | null = null;
 
     private constructor(workers: EffectWorker[], allWorkers: EffectWorker[]) {
+        super();
         this.workers = workers;
         this.allWorkers = allWorkers;
+
+        for (const worker of workers) {
+            worker.addEventListener('standalonemessage', event => {
+                switch (event.messageName) {
+                    case 'panicked':
+                        if (this.errorMessage) return;
+                        this.errorMessage = event.message;
+                        this.dispatchEvent(new PanicEvent(event.message));
+                        break;
+                }
+            });
+        }
     }
 
     static async create(concurrency?: number) {

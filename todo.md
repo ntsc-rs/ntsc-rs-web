@@ -41,7 +41,7 @@
 - [x] PWA
   - [ ] The "Ready to work offline" prompt could be off-putting if displayed the first time the user loads the app
 - [x] Weirdness with vertical stacked resizable panels on mobile
-- [ ] Restart WASM on panic
+- [x] Restart WASM on panic (well not really, but we do display an error message now)
 - [x] Fix vertical slider in Chrome
 - [ ] Display warning if your browser (e.g. Firefox on Android) does not support decoding (or encoding!) anything
 

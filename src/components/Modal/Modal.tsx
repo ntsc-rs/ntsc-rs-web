@@ -3,7 +3,7 @@ import style from './style.module.scss';
 import classnames from 'clsx';
 
 const Modal = ({onClose, children, className}: {
-    onClose: (event: Event) => unknown;
+    onClose?: (event: Event) => unknown;
     children: ComponentChildren;
     className?: string;
 }): JSX.Element => {

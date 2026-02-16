@@ -1,3 +1,5 @@
+import {TypedEvent, TypedEventTarget} from './typed-events';
+
 export type MessageSchema = {
     readonly request: {
         readonly name: string;
@@ -27,11 +29,24 @@ export type MessageFromWorker<T extends MessageSchema> = (T extends unknown ?
     {
         type: T['response']['name'];
         message: T['response']['message'];
-        originId: number;
+        originId: number | null;
     } :
-    never) | {type: 'error'; message: unknown; originId: number};
+    never) | {type: 'error'; message: unknown; originId: number | null};
 
-export default class RpcDispatcher<T extends MessageSchema> {
+export type StandaloneMessage<T extends MessageSchema> = Extract<T, {request: never}>;
+
+export class StandaloneMessageEvent<T extends MessageSchema> extends TypedEvent<'standalonemessage'> {
+    messageName: T['response']['name'];
+    message: T['response']['message'];
+    constructor(message: MessageFromWorker<T>) {
+        super('standalonemessage');
+        this.messageName = message.type;
+        this.message = message.message;
+    }
+}
+
+export default class RpcDispatcher<T extends MessageSchema> extends
+    TypedEventTarget<StandaloneMessageEvent<StandaloneMessage<T>>> {
     private worker: Worker;
     private map: ReqRespMap<T>;
     private sentMessageId = 0;
@@ -51,9 +66,18 @@ export default class RpcDispatcher<T extends MessageSchema> {
      */
     private deferClose = false;
 
+    private messages = new Map<number, {
+        respName: string;
+        resolve: (value: unknown) => void;
+        reject: (error: unknown) => void;
+    }>();
+
     constructor(worker: Worker, map: ReqRespMap<T>) {
+        super();
         this.worker = worker;
         this.map = map;
+
+        this.worker.addEventListener('message', this.onWorkerMessage);
     }
 
     send<
@@ -75,27 +99,12 @@ export default class RpcDispatcher<T extends MessageSchema> {
 
         this.inflightRequests++;
         return new Promise((resolve, reject) => {
-            const ac = new AbortController();
             const respName = this.map[name as unknown as keyof ReqRespMap<T>];
             if (typeof respName !== 'string') {
                 throw new Error(`${name} doesn't return a value. Use sendAndForget instead.`);
             }
-            worker.addEventListener('message', msg => {
-                const data = msg.data as MessageFromWorker<T>;
-                if (data.originId !== id) return;
 
-                this.inflightRequests--;
-                if (this.inflightRequests === 0 && this.deferClose) {
-                    this.worker.terminate();
-                }
-                if (data.type === respName) {
-                    ac.abort();
-                    resolve(data.message);
-                } else if (data.type === 'error') {
-                    ac.abort();
-                    reject(data.message as Error);
-                }
-            }, {signal: ac.signal});
+            this.messages.set(id, {respName, resolve, reject});
         });
     }
 
@@ -116,6 +125,25 @@ export default class RpcDispatcher<T extends MessageSchema> {
         };
         worker.postMessage(fullMessage, {transfer});
     }
+
+    private onWorkerMessage = (msg: MessageEvent) => {
+        const data = msg.data as MessageFromWorker<T>;
+        if (data.originId === null) {
+            this.dispatchEvent(new StandaloneMessageEvent(data as MessageFromWorker<StandaloneMessage<T>>));
+        }
+        const handlers = this.messages.get(data.originId!);
+        if (!handlers) return;
+
+        this.inflightRequests--;
+        if (this.inflightRequests === 0 && this.deferClose) {
+            this.worker.terminate();
+        }
+        if (data.type === handlers.respName) {
+            handlers.resolve(data.message);
+        } else if (data.type === 'error') {
+            handlers.reject(data.message as Error);
+        }
+    };
 
     close() {
         if (this.inflightRequests === 0) {

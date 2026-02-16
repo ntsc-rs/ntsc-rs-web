@@ -10,7 +10,7 @@ import {
 } from '../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import throttle from './util/throttle';
 import type {StateChangeEvent} from './util/render-job';
-import {GLOBAL_WORKER_POOL} from './util/effect-worker-pool';
+import {GLOBAL_WORKER_POOL, PanicEvent} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 import Directory from './util/signalize-fs';
 import SETTING_DESCRIPTORS from '../ntsc-rs-web-wrapper/build/setting-descriptors';
@@ -95,6 +95,7 @@ export class AppState {
 
     isPortrait: ReadonlySignal<boolean>;
     disclaimerModalOpen = signal(true);
+    panicMessage: Signal<string | null> = signal(null);
 
     constructor() {
         const flatSettings: Record<string, Signal<number | boolean>> = {};
@@ -219,6 +220,20 @@ export class AppState {
         this.isPortrait = isPortrait;
         this.cleanupCallbacks.push(() => {
             mediaQuery.removeEventListener('change', onQueryChange);
+        });
+
+        void GLOBAL_WORKER_POOL.then(pool => {
+            if (pool.errorMessage) {
+                this.panicMessage.value = pool.errorMessage;
+                return;
+            }
+            const onPanic = (event: PanicEvent) => {
+                this.panicMessage.value = event.message;
+            };
+            pool.addEventListener('panic', onPanic);
+            this.cleanupCallbacks.push(() => {
+                pool.removeEventListener('panic', onPanic);
+            });
         });
     }
 

@@ -7,6 +7,7 @@ import RenderSettingsPane from '../RenderSettingsPane/RenderSettingsPane';
 import ResizablePanel from '../ResizablePanel/ResizablePanel';
 import DisclaimerModal from '../DisclaimerModal/DisclaimerModal';
 import {useAppState} from '../../app-state';
+import PanicModal from '../PanicModal/PanicModal';
 
 const App = () => {
     const {isPortrait} = useAppState();
@@ -40,6 +41,7 @@ const App = () => {
             <VideoPlayer />
         </div>
         <DisclaimerModal />
+        <PanicModal />
     </div>;
 };
 
