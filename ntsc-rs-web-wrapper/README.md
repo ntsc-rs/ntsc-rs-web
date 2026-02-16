@@ -16,6 +16,11 @@ To build it, you'll need the following things:
   cargo install wasm-bindgen-cli
   ```
 
+- `cargo-about` for license information generation. Install it via:
+  ```
+  cargo install cargo-about
+  ```
+
 - The [Binaryen tools](https://github.com/WebAssembly/binaryen), specifically `wasm-opt`.
 
 
