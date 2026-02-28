@@ -16,7 +16,7 @@ const throttle = <F extends (...args: any[]) => void>(fn: F, delay: number, debo
         const run = () => {
             fn(...args);
 
-            lastExecutionTime = now;
+            lastExecutionTime = Date.now();
         };
 
         if (now - lastExecutionTime >= delay && !debounce) {

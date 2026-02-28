@@ -130,6 +130,11 @@ export default class OpfsRenderJobManager {
                     switch (job.state.state) {
                         case 'waiting':
                         case 'rendering':
+                            hydratedState = {
+                                state: 'cancelled' as const,
+                                reason: 'Exited page before render completed',
+                            };
+                            break;
                         case 'cancelled':
                             hydratedState = job.state;
                             break;

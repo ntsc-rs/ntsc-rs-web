@@ -130,8 +130,9 @@ export default class RpcDispatcher<T extends MessageSchema> extends
         const data = msg.data as MessageFromWorker<T>;
         if (data.originId === null) {
             this.dispatchEvent(new StandaloneMessageEvent(data as MessageFromWorker<StandaloneMessage<T>>));
+            return;
         }
-        const handlers = this.messages.get(data.originId!);
+        const handlers = this.messages.get(data.originId);
         if (!handlers) return;
 
         this.inflightRequests--;
@@ -143,6 +144,7 @@ export default class RpcDispatcher<T extends MessageSchema> extends
         } else if (data.type === 'error') {
             handlers.reject(data.message as Error);
         }
+        this.messages.delete(data.originId);
     };
 
     close() {

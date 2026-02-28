@@ -504,7 +504,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.videoSampleIterator = videoSampleIterator;
     }
 
-    private stopPlaying() {
+    private stopPlaying(closed = false) {
         this.playbackStartTimeMedia = this.getPlaybackTime();
         this.playbackStartTimeGlobal = null;
         void this.audioBufferIterator?.return();
@@ -522,7 +522,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
         this.playbackAbortController = new AbortController();
         this.clearPresentationQueue();
 
-        this.dispatchEvent(new StateChangeEvent('paused'));
+        if (!closed) this.dispatchEvent(new StateChangeEvent('paused'));
     }
 
     private getPlaybackTime() {
@@ -605,6 +605,7 @@ export default class MediaPlayer extends TypedEventTarget<FrameEvent | StateChan
     }
 
     destroy() {
+        this.stopPlaying(true);
         this.input.close();
         this.setCurrentFrame(null);
         this.clearPresentationQueue();

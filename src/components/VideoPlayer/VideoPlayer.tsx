@@ -714,8 +714,8 @@ const SplitBar = ({wrapperRef}: {wrapperRef: MutableRef<HTMLDivElement | null>})
     const {previewSplitRect: previewSplitBounds} = useAppState();
 
     const listeners = useRef<{
-        move: (...args: unknown[]) => void,
-        up: (...args: unknown[]) => void,
+        move: (event: PointerEvent) => void,
+        up: (event: PointerEvent) => void,
     }>(null);
     useEffect(() => {
         return () => {
@@ -744,6 +744,7 @@ const SplitBar = ({wrapperRef}: {wrapperRef: MutableRef<HTMLDivElement | null>})
 
         window.addEventListener('pointermove', onMove);
         window.addEventListener('pointerup', onUp);
+        listeners.current = {move: onMove, up: onUp};
     }, [wrapperRef]);
 
     return <>

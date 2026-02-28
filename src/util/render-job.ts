@@ -57,7 +57,7 @@ export const supportedCodecsForAudio = getEncodableAudioCodecs(['mp3', 'aac', 'o
 export default class RenderJob extends TypedEventTarget<ProgressEvent | StateChangeEvent | ErrorEvent> {
     private _state: RenderJobState = {state: 'waiting'};
     private _completionPromise: Promise<void>;
-    private _startTime: number = Date.now();
+    private _startTime: number = Date.now() / 1000;
     readonly sourceFileName: string;
     readonly videoCodec: AppVideoCodec;
     readonly destination: FileSystemFileHandle;
@@ -250,10 +250,11 @@ export default class RenderJob extends TypedEventTarget<ProgressEvent | StateCha
                     const videoFrame = frame.toVideoFrame();
                     const timestamp = frame.timestamp;
                     const duration = frame.duration;
+                    const rotation = getRotation(frame.rotation);
                     frame.close();
                     const getFrame = await effectPool.processFrame({
                         frame: videoFrame,
-                        rotation: getRotation(frame.rotation),
+                        rotation,
                         frameNum,
                         padToEven,
                         ...settings.effectSettings,

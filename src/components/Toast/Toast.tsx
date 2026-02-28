@@ -87,7 +87,7 @@ const Toast = ({children, toastRef, closeToast, showCloseButton, timeout, motif 
                         onClick={closeToast}
                     />}
                 </div>
-                {typeof title === 'undefined' || title === 'null' ?
+                {typeof title === 'undefined' || title === null ?
                     null :
                     <div className={classNames(style.toastContents, style.separateContents)}>
                         {children}

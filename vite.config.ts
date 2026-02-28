@@ -141,7 +141,7 @@ export default defineConfig({
                 const crateLicenses = new Map<string, License[]>();
                 for (const license of rustLicenses.licenses) {
                     for (const {crate} of license.used_by) {
-                        let licensesForCrate = crateLicenses.get(license.id);
+                        let licensesForCrate = crateLicenses.get(crate.id);
                         if (!licensesForCrate) {
                             licensesForCrate = [];
                             crateLicenses.set(crate.id, licensesForCrate);

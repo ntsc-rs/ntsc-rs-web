@@ -4,7 +4,7 @@ const DIVISOR = 1000;
 const formatFileSize = (bytes: number): string => {
     let unitIndex = 0;
     let sizeInUnits = bytes;
-    while (sizeInUnits > DIVISOR && unitIndex < UNITS.length) {
+    while (sizeInUnits > DIVISOR && unitIndex < UNITS.length - 1) {
         sizeInUnits /= DIVISOR;
         unitIndex++;
     }

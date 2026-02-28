@@ -194,11 +194,6 @@ const RenderSettingsPane = () => {
             });
     }, []);
     const curState = paneState.value;
-    if (curState.state !== 'loaded') {
-        return <div className={style.loader}>
-            <Loader />
-        </div>;
-    }
 
     const renderDirectlyToFile = useCallback(() => {
         const mediaBlob = appState.mediaBlob.value;
@@ -226,6 +221,12 @@ const RenderSettingsPane = () => {
     }, [appState]);
 
     const hasMedia = appState.mediaBlob.value;
+
+    if (curState.state !== 'loaded') {
+        return <div className={style.loader}>
+            <Loader />
+        </div>;
+    }
 
     return (
         <div className={style.renderPaneInner}>

@@ -177,8 +177,10 @@ const listener = async(event: MessageEvent) => {
                 removeEventListener('message', listener);
                 checkEffectData(effectData);
                 const {effect, settingsList} = await effectData;
-                void wasmMutex.withValue(() => effect.free());
-                settingsList.free();
+                void wasmMutex.withValue(() => {
+                    effect.free();
+                    settingsList.free();
+                });
                 break;
             }
         }

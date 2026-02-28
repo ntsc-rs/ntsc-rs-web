@@ -21,6 +21,7 @@ type LicensesData = {
 };
 
 type LoadState =
+    | {state: 'not-loaded'}
     | {state: 'loading'}
     | {state: 'loaded'; data: LicensesData}
     | {state: 'error'; error: string};
@@ -30,6 +31,10 @@ const CreditsModal = ({onClose}: {onClose: () => void}) => {
     const expandedLicense = useSignal<string | null>(null);
 
     useEffect(() => {
+        if (loadState.value.state !== 'not-loaded') {
+            return;
+        }
+        loadState.value = {state: 'loading'};
         fetch('/licenses.json')
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
