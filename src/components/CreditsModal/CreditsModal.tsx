@@ -27,7 +27,7 @@ type LoadState =
     | {state: 'error'; error: string};
 
 const CreditsModal = ({onClose}: {onClose: () => void}) => {
-    const loadState = useSignal<LoadState>({state: 'loading'});
+    const loadState = useSignal<LoadState>({state: 'not-loaded'});
     const expandedLicense = useSignal<string | null>(null);
 
     useEffect(() => {

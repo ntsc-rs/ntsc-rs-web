@@ -198,10 +198,10 @@ export default defineConfig({
             cert: fs.readFileSync('./localhost+2.pem'),
         },*/
     },
-    /*preview: {
+    preview: {
         https: {
             key: fs.readFileSync('./localhost+2-key.pem'),
             cert: fs.readFileSync('./localhost+2.pem'),
         },
-    },*/
+    },
 });
