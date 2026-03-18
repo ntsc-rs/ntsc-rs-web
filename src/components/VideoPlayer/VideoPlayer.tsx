@@ -172,7 +172,7 @@ const MediaDropZone = () => {
 
         >
             <header>No media loaded</header>
-            <div>Drag files here or {isTouch.value ? 'tap' : 'click'} to browse files</div>
+            <div>{isTouch.value ? 'Tap to browse files' : 'Drag files here or click to browse files'}</div>
         </div>
     );
 };
