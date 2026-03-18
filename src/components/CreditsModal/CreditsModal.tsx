@@ -52,8 +52,11 @@ const CreditsModal = ({onClose}: {onClose: () => void}) => {
     }, []);
 
     return (
-        <Modal onClose={onClose} className={style.creditsModal}>
-            <h1>Credits</h1>
+        <Modal
+            onClose={onClose}
+            className={style.creditsModal}
+            title="Credits"
+        >
             <p>
                 ntsc-rs is built with the following open-source libraries.
             </p>

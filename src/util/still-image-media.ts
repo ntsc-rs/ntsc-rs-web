@@ -152,7 +152,8 @@ export class WrappedInput extends TypedEventTarget<FrameRateChangeEvent> {
 
         let frameRate = null;
         if (options.calculateFrameRate) {
-            // TODO: perform this calculation ourselves to get an idea of whether the video has a variable framerate
+            // TODO: perform this calculation ourselves to get an idea of whether the video has a variable framerate.
+            // Mediabunny only gives us the average framerate :(
             const packetStats = await videoTrack.computePacketStats(100);
             frameRate = packetStats.averagePacketRate;
         }

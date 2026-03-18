@@ -16,7 +16,7 @@ import {ContextMenuItem, Menu, ToggleIcon} from '../Widgets/Widgets';
 import {Overlay} from '../Overlay/Overlay';
 
 const App = () => {
-    const {isPortrait} = useAppState();
+    const {isPortrait, disclaimerModalOpen} = useAppState();
     const aboutOpen = useSignal(false);
     const creditsOpen = useSignal(false);
 
@@ -37,6 +37,10 @@ const App = () => {
         creditsOpen.value = false;
     }, [creditsOpen]);
 
+    const openDisclaimer = useCallback(() => {
+        disclaimerModalOpen.value = true;
+    }, [disclaimerModalOpen]);
+
     const navMenuItems: ContextMenuItem[] = useMemo(() => {
         return [
             {
@@ -48,6 +52,11 @@ const App = () => {
                 id: 'home',
                 label: 'Homepage',
                 href: 'https://ntsc.rs',
+            },
+            {
+                id: 'limitations',
+                label: 'Limitations',
+                onClick: openDisclaimer,
             },
         ];
     }, []);

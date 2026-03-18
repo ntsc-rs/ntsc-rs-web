@@ -95,6 +95,7 @@ export class AppState {
 
     isPortrait: ReadonlySignal<boolean>;
     disclaimerModalOpen = signal(true);
+    disclaimerModalDismissed = signal(false);
     panicMessage: Signal<string | null> = signal(null);
 
     constructor() {
@@ -196,6 +197,7 @@ export class AppState {
                 renderVideoCodec: this.renderVideoCodec.value,
                 renderVideoBitrate: this.renderVideoBitrate.value,
                 renderStillImageDuration: this.renderStillImageDuration.value,
+                disclaimerModalDismissed: this.disclaimerModalDismissed.value,
                 version: 1 as const,
             };
 
@@ -403,6 +405,7 @@ type SavedState = Partial<{
     renderVideoCodec: AppVideoCodec | null,
     renderVideoBitrate: number,
     renderStillImageDuration: number,
+    disclaimerModalDismissed: boolean,
 }> & {version: 1};
 
 const loadState = (store: AppState) => {
@@ -426,11 +429,14 @@ const loadState = (store: AppState) => {
             'renderVideoCodec',
             'renderVideoBitrate',
             'renderStillImageDuration',
+            'disclaimerModalDismissed',
         ] as const) {
             if (typeof savedState[key] !== 'undefined') {
                 store[key].value = savedState[key];
             }
         }
+
+        store.disclaimerModalOpen.value = !store.disclaimerModalDismissed.value;
     } catch (err) {
         // Swallow errors here
         // eslint-disable-next-line no-console

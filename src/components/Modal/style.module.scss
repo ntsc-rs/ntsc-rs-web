@@ -37,3 +37,19 @@
     border-radius: theme.$radius;
     pointer-events: all;
 }
+
+.modal-header {
+    font-size: 2rem;
+    font-weight: bold;
+    display: flex;
+    margin: 1rem 0 1.5rem;
+}
+
+.modal-header-left {
+    display: flex;
+    align-items: center;
+}
+
+.close-button {
+    margin-left: auto;
+}

@@ -7,17 +7,31 @@ import Modal from '../Modal/Modal';
 import {Button, LinkButton} from '../Widgets/Widgets';
 
 const DisclaimerModal = () => {
-    const {disclaimerModalOpen} = useAppState();
+    const {disclaimerModalOpen, disclaimerModalDismissed} = useAppState();
     const onModalClose = useCallback(() => {
         disclaimerModalOpen.value = false;
+        disclaimerModalDismissed.value = true;
     }, [disclaimerModalOpen]);
 
     if (!disclaimerModalOpen.value) return null;
 
-    return <Modal onClose={onModalClose} className={style.disclaimerModal}>
-        <h1>Web Version Limitations</h1>
-
+    return <Modal
+        onClose={onModalClose}
+        className={style.disclaimerModal}
+        title="Web Version Limitations"
+    >
         This is the <strong>experimental</strong> web version of ntsc-rs. It runs entirely in your browser, which makes it convenient, but it comes with some limitations compared to <a href="https://ntsc.rs">the desktop version</a>:
+
+        <h2>Platform issues</h2>
+
+        <p>
+            ntsc-rs uses bleeding-edge web technology to decode and encode videos entirely within the browser. This technology has not been widely tested, and has not been implemented properly across all web browsers.
+        </p>
+
+        <ul>
+            <li>Lack of support on some platforms. At the time of writing, Firefox for Android does not support <em>any</em> video codecs at all.</li>
+            <li>Codec bugs. Mobile versions of Safari seem to have issues decoding many video formats common on iOS devices. This means that <strong>you might not be able to use ntsc-rs on your iPhone!</strong> There is <strong>nothing</strong> that I can do about this. It's a bug in Safari that I am unable to fix, and because Apple requires every web browser on iOS to use Safari's engine internally (yes, even Chrome and Firefox), there is no way around this. Sorry.</li>
+        </ul>
 
         <h2>Video output</h2>
 

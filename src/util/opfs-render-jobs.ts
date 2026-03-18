@@ -97,8 +97,14 @@ export default class OpfsRenderJobManager {
     private listFile: Queuetex<Promise<FileSystemFileHandle>>;
 
     constructor() {
-        this.renderJobsDir = navigator.storage.getDirectory()
-            .then(dir => dir.getDirectoryHandle(DIRECTORY_NAME, {create: true}));
+        // If navigator.storage does not exist (e.g. GNOME Web for some reason),
+        // the error should be thrown from inside the renderJobsDir promise so
+        // it can be caught and handled properly
+        this.renderJobsDir = (async() => {
+            const dir = await navigator.storage.getDirectory();
+            const handle = await dir.getDirectoryHandle(DIRECTORY_NAME, {create: true});
+            return handle;
+        })();
         this.listFile = new Queuetex(this.renderJobsDir.then(dir => dir.getFileHandle(LIST_NAME, {create: true})));
     }
 

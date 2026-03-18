@@ -228,6 +228,17 @@ const RenderSettingsPane = () => {
         </div>;
     }
 
+    if (curState.dropdownOptions.length === 0) {
+        return <div className={style.noCodecsSupported}>
+            <p>
+                This web browser does not support encoding videos.
+            </p>
+            <p>
+                Try another browser.
+            </p>
+        </div>;
+    }
+
     return (
         <div className={style.renderPaneInner}>
             <div className={style.renderSettings}>

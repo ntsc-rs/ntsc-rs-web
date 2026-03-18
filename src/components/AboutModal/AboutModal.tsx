@@ -12,10 +12,11 @@ const AboutModal = ({
     onShowCredits: () => void;
 }) => {
     return (
-        <Modal onClose={onClose} className={style.aboutModal}>
-            <h1>
-                ntsc-rs (web version)
-            </h1>
+        <Modal
+            onClose={onClose}
+            className={style.aboutModal}
+            title="ntsc-rs (web version)"
+        >
             <p>
                 by <a href="https://github.com/valadaptive/">valadaptive</a>
             </p>
