@@ -49,14 +49,19 @@ const App = () => {
                 onClick: openAbout,
             },
             {
+                id: 'limitations',
+                label: 'Limitations',
+                onClick: openDisclaimer,
+            },
+            {
                 id: 'home',
                 label: 'Homepage',
                 href: 'https://ntsc.rs',
             },
             {
-                id: 'limitations',
-                label: 'Limitations',
-                onClick: openDisclaimer,
+                id: 'github',
+                label: 'GitHub',
+                href: 'https://github.com/ntsc-rs/ntsc-rs-web',
             },
         ];
     }, []);

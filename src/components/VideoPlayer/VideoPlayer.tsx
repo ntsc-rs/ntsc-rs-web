@@ -88,10 +88,8 @@ const VideoPlayer = () => {
                 <VideoPaneInner player={playerState.player} />
             </div>;
             case 'error': return <div class={style.error}>
-                <div>
-                    <header className={style.errorHeader}>Error loading media</header>
-                    <div className={style.errorBody}>{playerState.error.message}</div>
-                </div>
+                <header className={style.errorHeader}>Error loading media</header>
+                <div className={style.errorBody}>{playerState.error.message}</div>
             </div>;
         }
     });

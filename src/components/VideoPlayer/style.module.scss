@@ -167,6 +167,10 @@
     color: theme.$text-detail;
 }
 
+.error {
+    flex-direction: column;
+}
+
 .error header, .media-drop-zone header {
     font-size: 200%;
     margin-bottom: 1rem;
