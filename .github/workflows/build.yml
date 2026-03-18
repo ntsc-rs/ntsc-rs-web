@@ -48,12 +48,12 @@ jobs:
       - name: Build (Vite)
         run: npm run build
 
-      #- name: Deploy
-      #  uses: peaceiris/actions-gh-pages@v4
-      #  if: github.ref == 'refs/heads/main'
-      #  env:
-      #    NODE_ENV: production
-      #  with:
-      #    github_token: ${{ secrets.GITHUB_TOKEN }}
-      #    publish_dir: ./dist
-      #    cname: web.ntsc.rs
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/main'
+        env:
+          NODE_ENV: production
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          cname: web.ntsc.rs
