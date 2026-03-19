@@ -209,10 +209,11 @@ impl NtscEffectBuf {
                 YiqView::max_buf_length_for((frame_w, frame_h), self.effect.use_field);
             maybe_resize(&mut self.effect_buf, new_yiq_len);
 
+            let field = self.effect.use_field.to_yiq_field(frame_num);
             let mut view = YiqView::from_parts(
-                &mut self.effect_buf,
+                &mut self.effect_buf[..YiqView::buf_length_for((frame_w, frame_h), field)],
                 (frame_w, frame_h),
-                self.effect.use_field.to_yiq_field(frame_num),
+                field,
             );
             view.set_from_strided_buffer::<Rgbx, u8, _>(
                 pre_effect_src,
