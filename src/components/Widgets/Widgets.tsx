@@ -161,10 +161,13 @@ export const ImperativeSpinBox = ({
     currentValue.current = value;
 
     const handleInput = useCallback((event: TargetedEvent<HTMLInputElement, InputEvent>) => {
-        const newValue = customDisplay ?
+        let newValue = customDisplay ?
             customDisplay.parse(event.currentTarget.value) :
             Number(event.currentTarget.value);
-        if (newValue !== null) onInput(newValue);
+        if (newValue === null || !Number.isFinite(newValue)) return;
+        if (min) newValue = Math.max(min, newValue);
+        if (max) newValue = Math.min(max, newValue);
+        onInput(newValue);
     }, [currentValue, customDisplay?.parse, onInput]);
 
     const increment = useCallback(() => {
