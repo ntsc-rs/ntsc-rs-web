@@ -32,6 +32,10 @@
     height: 100%;
     box-sizing: border-box;
     cursor: pointer;
+    padding-right: calc(24px + 0.5rem);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 .spinbox-wrapper {
