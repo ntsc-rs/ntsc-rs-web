@@ -1,14 +1,14 @@
 @use '../../css/theme.scss';
 
 .preset-manager {
-    border-top: 1px solid theme.$divider;
+    border-top: 1px solid var(--divider);
     display: flex;
     flex-direction: column;
 }
 
 // For mobile, don't make it resizable
 .full-height-panel {
-    border-top: 1px solid theme.$divider;
+    border-top: 1px solid var(--divider);
     flex: 1 0 auto;
     display: flex;
     flex-direction: column;
@@ -19,13 +19,13 @@
     align-items: center;
     gap: 0.5rem;
     width: 100%;
-    padding: 0 theme.$pane-padding;
+    padding: 0 var(--pane-padding);
     height: 2.5rem;
     cursor: pointer;
     @include theme.bg-fade;
 
     &:hover {
-        background-color: theme.$toggle-hover;
+        background-color: var(--toggle-hover);
     }
 }
 
@@ -40,8 +40,8 @@
 }
 
 .settings-section {
-    padding: 0.5rem theme.$pane-padding;
-    border-bottom: 1px solid theme.$divider;
+    padding: 0.5rem var(--pane-padding);
+    border-bottom: 1px solid var(--divider);
     display: flex;
     flex: 0 0 auto;
 
@@ -54,7 +54,7 @@
     align-self: stretch;
     flex: 0 0 1px;
     margin: 0 0.5rem;
-    background-color: theme.$divider;
+    background-color: var(--divider);
 }
 
 .current-settings-actions {
@@ -82,7 +82,7 @@
     display: flex;
     flex: 1 1 0;
     flex-direction: column;
-    padding: 0 theme.$pane-padding 0.5rem;
+    padding: 0 var(--pane-padding) 0.5rem;
 }
 
 .preset-list {
@@ -91,15 +91,15 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    border: 1px solid theme.$divider;
-    border-radius: theme.$radius;
-    background: theme.$base-color-tertiary;
+    border: 1px solid var(--divider);
+    border-radius: var(--corner-radius);
+    background: var(--base-color-tertiary);
     display: flex;
     flex-direction: column;
 
     &.drop-target {
-        border-color: theme.$primary-light;
-        background: theme.$primary-muted;
+        border-color: var(--primary-light);
+        background: var(--primary-muted);
     }
 }
 
@@ -117,11 +117,11 @@
     @include theme.fade(background-color, opacity);
 
     &:hover {
-        background-color: theme.$toggle-hover;
+        background-color: var(--toggle-hover);
     }
 
     &.selected {
-        background-color: theme.$toggle-active;
+        background-color: var(--toggle-active);
     }
 
     &.loading {
@@ -133,8 +133,8 @@
     }
 
     &.drop-target {
-        background-color: theme.$primary-muted;
-        outline: 2px dashed theme.$primary-light;
+        background-color: var(--primary-muted);
+        outline: 2px dashed var(--primary-light);
         outline-offset: -2px;
     }
 
@@ -149,7 +149,7 @@
     }
 
     &.entry-error {
-        color: theme.$red;
+        color: var(--red);
     }
 }
 
@@ -185,7 +185,7 @@
 
     &::after {
         content: '';
-        border-left: 1px solid theme.$divider;
+        border-left: 1px solid var(--divider);
     }
 }
 
@@ -197,7 +197,7 @@
 }
 
 .empty-state {
-    color: theme.$text-detail;
+    color: var(--text-detail);
     text-align: center;
 }
 

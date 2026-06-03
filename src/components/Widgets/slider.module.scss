@@ -1,8 +1,6 @@
 // Adapted from css-tricks:
 // https://css-tricks.com/sliding-nightmare-understanding-range-input/
 
-@use '../../css/theme.scss' as theme;
-
 $track-w: 12.5em;
 $track-h: 8px;
 $thumb-d: 16px;
@@ -43,15 +41,15 @@ $thumb-d: 16px;
     --ratio: calc((var(--val) - var(--min))/var(--range));
     --sx: calc(.5*#{$thumb-d} + var(--ratio)*(100% - #{$thumb-d}));
 
-    --track-c: #{theme.$interactive-muted};
-    --fill-c: #{theme.$interactive-active};
-    --thumb-c: #{theme.$base-color-tertiary};
+    --track-c: var(--interactive-muted);
+    --fill-c: var(--interactive-active);
+    --thumb-c: var(--base-color-tertiary);
 
     --track-w: auto;
     --track-h: #{$track-h};
 
     &:disabled {
-        --fill-c: #{theme.$interactive-muted};
+        --fill-c: var(--interactive-muted);
     }
 
     &.vertical {

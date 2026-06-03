@@ -1,5 +1,3 @@
-@use '../../css/theme.scss';
-
 .resizable-panel {
     position: relative;
     overflow: visible;
@@ -18,13 +16,13 @@
 
     &::after {
         content: '';
-        background-color: theme.$divider;
+        background-color: var(--divider);
         display: flex;
         align-self: center;
     }
 
     &:hover::after {
-        background-color: theme.$interactive-hover;
+        background-color: var(--interactive-hover);
     }
 }
 
@@ -105,12 +103,12 @@
     }
 
     .splitter {
-        background-color: theme.$base-color-tertiary;
+        background-color: var(--base-color-tertiary);
         border: none;
 
         &::after {
             content: '';
-            background-color: theme.$divider;
+            background-color: var(--divider);
             border-radius: var(--splitter-size);
             display: flex;
             align-self: center;

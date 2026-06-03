@@ -1,5 +1,3 @@
-@use '../../css/theme.scss' as theme;
-
 @keyframes move-stripes {
     0% {
         background-position: -31.11px 0;
@@ -31,15 +29,15 @@
 
 .total-duration.infinite {
     font-size: 2rem;
-    color: theme.$text-detail;
+    color: var(--text-detail);
 }
 
 .video-info-bar {
     display: flex;
     flex: 0 0 2em;
     align-items: center;
-    border-bottom: 1px solid theme.$divider;
-    background-color: theme.$base-color-primary;
+    border-bottom: 1px solid var(--divider);
+    background-color: var(--base-color-primary);
 }
 
 .video-info {
@@ -48,7 +46,7 @@
 }
 
 .video-resolution, .video-framerate {
-    border-right: 1px solid theme.$divider;
+    border-right: 1px solid var(--divider);
     display: flex;
     align-items: center;
     padding: 0 0.5rem;
@@ -68,12 +66,12 @@
 
 .player-controls {
     display: flex;
-    border-top: 1px solid theme.$divider;
-    background-color: theme.$base-color-primary;
+    border-top: 1px solid var(--divider);
+    background-color: var(--base-color-primary);
     flex: 0 0 auto;
 
     & > * {
-        border-right: 1px solid theme.$divider;
+        border-right: 1px solid var(--divider);
 
         &:last-child {
             border-right: none;
@@ -85,7 +83,7 @@
     }
 
     &.disabled {
-        color: theme.$interactive-muted;
+        color: var(--interactive-muted);
     }
 }
 
@@ -94,7 +92,7 @@
     align-items: center;
     justify-content: flex-end;
     margin-left: auto;
-    border-left: 1px solid theme.$divider;
+    border-left: 1px solid var(--divider);
     gap: 0.5rem;
     padding: 0 0.5rem;
 }
@@ -150,7 +148,7 @@
         bottom: 1em;
 
         border: 4px solid transparent;
-        --border-color: #{theme.$divider};
+        --border-color: var(--divider);
         background: repeating-linear-gradient(45deg, var(--border-color), var(--border-color) 10px, transparent 11px, transparent 21px, var(--border-color) 22px) border-box;
         background-size: calc(100% + 64px) calc(100% + 64px);
         mask:
@@ -164,7 +162,7 @@
 
 .loading-state {
     font-size: 200%;
-    color: theme.$text-detail;
+    color: var(--text-detail);
 }
 
 .error {
@@ -207,12 +205,12 @@
     cursor: pointer;
 
     &:hover::after {
-        background-color: theme.$interactive-active;
+        background-color: var(--interactive-active);
     }
 
     &::after {
         content: '';
-        background-color: theme.$interactive-normal;
+        background-color: var(--interactive-normal);
         position: absolute;
         top: 0;
         bottom: 0;
@@ -223,9 +221,9 @@
 
 .slider-popup {
     position: absolute;
-    background-color: theme.$base-color-primary;
-    border: 1px solid theme.$divider;
-    border-radius: theme.$radius;
+    background-color: var(--base-color-primary);
+    border: 1px solid var(--divider);
+    border-radius: var(--corner-radius);
     padding: 0.5rem;
 
     display: flex;

@@ -1,5 +1,3 @@
-@use '../../css/theme.scss' as theme;
-
 .toast-container {
     position: absolute;
     top: 0;
@@ -40,9 +38,9 @@
 }
 
 .toast {
-    background-color: theme.$base-color-primary;
-    border: 1px solid theme.$interactive-normal;
-    border-radius: theme.$radius;
+    background-color: var(--base-color-primary);
+    border: 1px solid var(--interactive-normal);
+    border-radius: var(--corner-radius);
 
     display: flex;
     flex-direction: column;
@@ -51,20 +49,20 @@
     animation: pop-in 0.25s;
 
     &.success {
-        background-color: theme.$green;
+        background-color: var(--green);
         border: none;
         --icon-button-color: currentColor;
     }
 
     &.warning {
-        background-color: theme.$yellow;
+        background-color: var(--yellow);
         border: none;
-        color: theme.$base-color-tertiary;
+        color: var(--base-color-tertiary);
         --icon-button-color: currentColor;
     }
 
     &.error {
-        background-color: theme.$red;
+        background-color: var(--red);
         border: none;
         --icon-button-color: currentColor;
     }

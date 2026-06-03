@@ -9,23 +9,23 @@
     flex: 0 0 auto;
 
     &.motif-monochrome {
-        color: theme.$interactive-normal;
+        color: var(--interactive-normal);
     }
 
     &.motif-primary {
-        background-color: theme.$primary-lighter;
+        background-color: var(--primary-lighter);
     }
 
     &.motif-success {
-        background-color: theme.$green;
+        background-color: var(--green);
     }
 
     &.motif-warning {
-        background-color: theme.$yellow;
+        background-color: var(--yellow);
     }
 
     &.motif-error {
-        background-color: theme.$red;
+        background-color: var(--red);
     }
 
     &.icon-clickable {
@@ -59,7 +59,7 @@
 }
 
 :root {
-    --icon-button-color: #{theme.$interactive-normal};
+    --icon-button-color: var(--interactive-normal);
 }
 
 .icon-button {
@@ -69,7 +69,7 @@
     color: var(--icon-button-color);
     @include theme.fade(color, opacity);
 
-    @include button-color(theme.$interactive-hover, theme.$interactive-active, theme.$interactive-muted);
+    @include button-color(var(--interactive-hover), var(--interactive-active), var(--interactive-muted));
 
     &.motif-monochrome {
         @include button-color(currentColor, currentColor, currentColor);
@@ -88,8 +88,8 @@
     }
 
     &:focus-visible {
-        outline: 2px solid theme.$text;
-        border-radius: theme.$radius;
+        outline: 2px solid var(--text);
+        border-radius: var(--corner-radius);
     }
 
     &.icon-disabled {

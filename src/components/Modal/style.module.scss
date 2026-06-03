@@ -1,5 +1,3 @@
-@use '../../css/theme.scss' as theme;
-
 .modal-wrapper {
     z-index: 2;
     position: fixed;
@@ -33,8 +31,8 @@
 
 .modal {
     z-index: 3;
-    background-color: theme.$base-color-primary;
-    border-radius: theme.$radius;
+    background-color: var(--base-color-primary);
+    border-radius: var(--corner-radius);
     pointer-events: all;
 }
 

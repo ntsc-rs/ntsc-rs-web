@@ -1,5 +1,3 @@
-@use '../../css/theme.scss';
-
 .settings-pane {
     display: flex;
     flex-direction: column;
@@ -8,7 +6,7 @@
 }
 
 .settings-list {
-    padding: theme.$pane-padding;
+    padding: var(--pane-padding);
     overflow: auto;
     flex: 1 1 0;
     scrollbar-gutter: stable;
@@ -21,7 +19,7 @@
     align-items: center;
 
     &.disabled {
-        color: theme.$text-detail;
+        color: var(--text-detail);
     }
 }
 
@@ -53,8 +51,8 @@
 }
 
 .group-box {
-    //border: 1px solid theme.$interactive-muted;
-    border-radius: theme.$radius;
+    //border: 1px solid var(--interactive-muted);
+    border-radius: var(--corner-radius);
     border-top-color: transparent;
     position: relative;
 }
@@ -67,11 +65,11 @@
 }
 
 .group-box-border-left, .group-box-border-right {
-    border: 1px solid theme.$divider;
+    border: 1px solid var(--divider);
     border-bottom-color: transparent;
     border-left-color: transparent;
     border-right-color: transparent;
-    border-radius: theme.$radius;
+    border-radius: var(--corner-radius);
     height: 0.5rem;
     box-sizing: border-box;
     align-self: flex-end;
@@ -93,8 +91,8 @@
     left: 0;
     bottom: 0;
     right: 0;
-    border: 1px solid theme.$divider;
-    border-radius: theme.$radius;
+    border: 1px solid var(--divider);
+    border-radius: var(--corner-radius);
     border-top-color: transparent;
     pointer-events: none;
 }
@@ -125,7 +123,7 @@
     grid-column: 1 / 3;
 
     padding-bottom: 1rem;
-    border-bottom: 1px solid theme.$divider;
+    border-bottom: 1px solid var(--divider);
 }
 
 .resize-dropdown {

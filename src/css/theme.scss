@@ -73,45 +73,6 @@
     }
 }
 
-$base-color-primary: var(--base-color-primary);
-$base-color-secondary: var(--base-color-secondary);
-$base-color-tertiary: var(--base-color-tertiary);
-$text: var(--text);
-$text-detail: var(--text-detail);
-$icon: var(--icon);
-$icon-detail: var(--icon-detail);
-$link: var(--link);
-$link-underline: var(--link-underline);
-$toggle-hover: var(--toggle-hover);
-$toggle-active: var(--toggle-active);
-$toggle-active-disabled: var(--toggle-active-disabled);
-$interactive-normal: var(--interactive-normal);
-$interactive-hover: var(--interactive-hover);
-$interactive-active: var(--interactive-active);
-$interactive-muted: var(--interactive-muted);
-$divider: var(--divider);
-$primary: var(--primary);
-$primary-hover: var(--primary-hover);
-$primary-active: var(--primary-active);
-$primary-muted: var(--primary-muted);
-$primary-light: var(--primary-light);
-$primary-lighter: var(--primary-lighter);
-$red: var(--red);
-$red-hover: var(--red-hover);
-$red-active: var(--red-active);
-$red-muted: var(--red-muted);
-$yellow: var(--yellow);
-$yellow-hover: var(--yellow-hover);
-$yellow-active: var(--yellow-active);
-$yellow-muted: var(--yellow-muted);
-$green: var(--green);
-$green-hover: var(--green-hover);
-$green-active: var(--green-active);
-$green-muted: var(--green-muted);
-
-$pane-padding: var(--pane-padding);
-$radius: var(--corner-radius);
-
 @mixin bg-fade {
     transition: background-color 0.25s ease;
 }

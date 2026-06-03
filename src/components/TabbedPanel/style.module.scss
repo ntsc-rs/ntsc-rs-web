@@ -9,10 +9,10 @@
 .tabs {
     display: flex;
     gap: 0.5rem;
-    background-color: theme.$base-color-tertiary;
+    background-color: var(--base-color-tertiary);
     padding: 0.5rem;
     padding-bottom: 0;
-    border-bottom: 1px solid theme.$divider;
+    border-bottom: 1px solid var(--divider);
 }
 
 .tab {
@@ -20,20 +20,20 @@
     background-clip: padding-box;
 
     padding: 0.325rem 0.75rem;
-    border-top-left-radius: theme.$radius;
-    border-top-right-radius: theme.$radius;
+    border-top-left-radius: var(--corner-radius);
+    border-top-right-radius: var(--corner-radius);
     cursor: pointer;
     border: 1px solid transparent;
     margin-bottom: -1px;
 
     &:hover {
-        background-color: theme.$toggle-hover;
+        background-color: var(--toggle-hover);
     }
 
     &.active-tab {
-        background-color: theme.$base-color-primary;
-        border: 1px solid theme.$divider;
-        border-bottom-color: theme.$base-color-primary;
+        background-color: var(--base-color-primary);
+        border: 1px solid var(--divider);
+        border-bottom-color: var(--base-color-primary);
     }
 }
 
