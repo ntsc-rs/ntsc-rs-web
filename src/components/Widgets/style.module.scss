@@ -89,10 +89,10 @@ input[type=number].spinbox-field, input[type=text].spinbox-field {
 .spinbox-button {
     flex: 1 1 auto;
     cursor: pointer;
-    background-color: theme.$base-color-secondary-dark;
+    background-color: theme.$base-color-secondary;
 
     &:hover {
-        background-color: theme.$base-color-secondary;
+        background-color: theme.$base-color-primary;
     }
 
     &:active {

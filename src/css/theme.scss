@@ -1,7 +1,6 @@
 :root {
     --base-color-primary: #161518;
     --base-color-secondary: #101113;
-    --base-color-secondary-dark: #0d0e0f;
     --base-color-tertiary: #050607;
 
     --text: #f8f1e6;
@@ -52,7 +51,6 @@
     :root {
         --base-color-primary: #eeeae4;
         --base-color-secondary: #e0dbd2;
-        --base-color-secondary-dark: #c9c3b8;
         --base-color-tertiary: #fffcf7;
 
         --text: #161518;
@@ -77,7 +75,6 @@
 
 $base-color-primary: var(--base-color-primary);
 $base-color-secondary: var(--base-color-secondary);
-$base-color-secondary-dark: var(--base-color-secondary-dark);
 $base-color-tertiary: var(--base-color-tertiary);
 $text: var(--text);
 $text-detail: var(--text-detail);
