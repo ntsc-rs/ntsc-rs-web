@@ -13,6 +13,7 @@
 }
 
 .panel-header {
+    composes: button-reset from 'valadaptive-lib/css/shared.module.css';
     display: flex;
     align-items: center;
     gap: 0.5rem;

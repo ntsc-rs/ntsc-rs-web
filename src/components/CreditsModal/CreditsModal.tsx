@@ -5,6 +5,7 @@ import {useEffect} from 'preact/hooks';
 import Modal from 'valadaptive-lib/Modal';
 import Loader from 'valadaptive-lib/Loader';
 import Icon from 'valadaptive-lib/Icon';
+import {Button} from 'valadaptive-lib/Button';
 
 type CreditsLicense = {
     name: string;
@@ -150,7 +151,7 @@ const LicenseItem = ({dep, texts, index, expandedLicense}: {
 
     return (
         <div className={style.licenseItem}>
-            <button
+            <Button
                 className={style.licenseHeader}
                 onClick={toggle}
                 disabled={!hasText}
@@ -164,7 +165,7 @@ const LicenseItem = ({dep, texts, index, expandedLicense}: {
                 {licenseNames.length > 0 && (
                     <span className={style.depLicense}>{licenseNames.join(', ')}</span>
                 )}
-            </button>
+            </Button>
             {isExpanded && hasText && (
                 <pre className={style.licenseText}>
                     {typeof dep.text === 'number' ?

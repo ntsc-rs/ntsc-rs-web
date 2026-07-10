@@ -2,7 +2,6 @@ import {render} from 'preact';
 
 import 'valadaptive-lib/css/fonts.css';
 import 'valadaptive-lib/css/global.css';
-import 'valadaptive-lib/css/buttons.css';
 import 'valadaptive-lib/css/theme.css';
 
 import AppInner from './components/App/App';
