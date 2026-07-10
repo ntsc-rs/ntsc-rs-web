@@ -6,16 +6,16 @@ import {useCallback, useContext, useEffect, useMemo, useRef} from 'preact/hooks'
 import {batch, signal, Signal, useComputed, useSignal} from '@preact/signals';
 import classNames from 'clsx';
 
-import {IconButton} from '../Icon/Icon';
-import Icon from '../Icon/Icon';
-import {Button, ContextMenuItem, useContextMenu} from '../Widgets/Widgets';
-import {useAddErrorToast} from '../Toast/Toast';
+import Icon, {IconButton} from 'valadaptive-lib/Icon';
+import {Button} from 'valadaptive-lib/Button';
+import {ContextMenuItem, useContextMenu} from 'valadaptive-lib/ContextMenu';
+import {useAddErrorToast} from 'valadaptive-lib/Toast';
 import {useAppState, SelectedPreset, PresetsDirState} from '../../app-state';
-import ResizablePanel from '../ResizablePanel/ResizablePanel';
+import ResizablePanel from 'valadaptive-lib/ResizablePanel';
 import Directory, {DirStatus} from '../../util/signalize-fs';
-import saveToFile from '../../util/save-to-file';
-import showOpenFilePicker from '../../util/file-picker';
-import {useThrottledComputed} from '../../util/throttle';
+import saveToFile from 'valadaptive-lib/util/save-to-file';
+import showOpenFilePicker from 'valadaptive-lib/util/file-picker';
+import {useThrottledComputed} from 'valadaptive-lib/util/throttle';
 import {
     DragDropProvider,
     useDraggable,
@@ -25,8 +25,8 @@ import {
     DropConfig,
     Droppable,
     TypedDroppable,
-} from '../../util/drag-drop';
-import Loader from '../Loader/Loader';
+} from 'valadaptive-lib/util/drag-drop';
+import Loader from 'valadaptive-lib/Loader';
 
 type PartialHandle = {
     kind: 'file' | 'directory' | 'placeholderFile' | 'placeholderDirectory';

@@ -4,10 +4,10 @@ import {
     VideoSample,
     WrappedAudioBuffer,
 } from 'mediabunny';
-import {TypedEvent, TypedEventTarget} from './typed-events';
+import {TypedEvent, TypedEventTarget} from 'valadaptive-lib/util/typed-events';
 import type {ResizeFilter} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import type EffectWorkerPool from './effect-worker-pool';
-import Queue from './queue';
+import Queue from 'valadaptive-lib/util/queue';
 import {VideoSampleSinkLike, WrappedInput} from './still-image-media';
 import {getRotation} from './effect-worker-pool';
 

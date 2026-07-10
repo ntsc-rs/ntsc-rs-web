@@ -1,10 +1,10 @@
 import {AppVideoCodec} from '../app-state';
-import Queuetex from './async-queue';
+import AsyncMutex from 'valadaptive-lib/util/async-mutex';
 import {extensionForCodec} from './extension-for-codec';
-import {generateID} from './id';
+import {generateID} from 'valadaptive-lib/util/id';
 import type RenderJob from './render-job';
 import type {RenderJobState, StateChangeEvent} from './render-job';
-import {TypedEventTarget} from './typed-events';
+import {TypedEventTarget} from 'valadaptive-lib/util/typed-events';
 
 const DIRECTORY_NAME = 'render_jobs';
 const LIST_NAME = 'jobs.json';
@@ -94,7 +94,7 @@ type SerializedRenderJobList = {
 
 export default class OpfsRenderJobManager {
     private renderJobsDir: Promise<FileSystemDirectoryHandle>;
-    private listFile: Queuetex<Promise<FileSystemFileHandle>>;
+    private listFile: AsyncMutex<Promise<FileSystemFileHandle>>;
 
     constructor() {
         // If navigator.storage does not exist (e.g. GNOME Web for some reason),
@@ -105,7 +105,7 @@ export default class OpfsRenderJobManager {
             const handle = await dir.getDirectoryHandle(DIRECTORY_NAME, {create: true});
             return handle;
         })();
-        this.listFile = new Queuetex(this.renderJobsDir.then(dir => dir.getFileHandle(LIST_NAME, {create: true})));
+        this.listFile = new AsyncMutex(this.renderJobsDir.then(dir => dir.getFileHandle(LIST_NAME, {create: true})));
     }
 
     async initAndDoCleanup() {

@@ -3,8 +3,8 @@ import style from './style.module.scss';
 
 import {useCallback} from 'preact/hooks';
 import {useAppState} from '../../app-state';
-import Modal from '../Modal/Modal';
-import {Button, LinkButton} from '../Widgets/Widgets';
+import Modal from 'valadaptive-lib/Modal';
+import {Button, LinkButton} from 'valadaptive-lib/Button';
 
 const DisclaimerModal = () => {
     const {disclaimerModalOpen, disclaimerModalDismissed} = useAppState();

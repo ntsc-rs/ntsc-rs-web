@@ -2,9 +2,9 @@ import style from './style.module.scss';
 
 import {Signal, useSignal} from '@preact/signals';
 import {useEffect} from 'preact/hooks';
-import Modal from '../Modal/Modal';
-import Loader from '../Loader/Loader';
-import Icon from '../Icon/Icon';
+import Modal from 'valadaptive-lib/Modal';
+import Loader from 'valadaptive-lib/Loader';
+import Icon from 'valadaptive-lib/Icon';
 
 type CreditsLicense = {
     name: string;

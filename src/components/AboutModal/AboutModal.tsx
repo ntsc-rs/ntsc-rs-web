@@ -1,8 +1,8 @@
 /* eslint-disable @stylistic/max-len */
 import style from './style.module.scss';
 
-import Modal from '../Modal/Modal';
-import {Button} from '../Widgets/Widgets';
+import Modal from 'valadaptive-lib/Modal';
+import {Button} from 'valadaptive-lib/Button';
 
 const AboutModal = ({
     onClose,

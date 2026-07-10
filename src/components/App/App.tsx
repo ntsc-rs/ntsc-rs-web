@@ -4,16 +4,17 @@ import {useSignal} from '@preact/signals';
 import {useCallback, useMemo, useRef} from 'preact/hooks';
 import VideoPlayer from '../VideoPlayer/VideoPlayer';
 import SettingsPane from '../SettingsList/SettingsList';
-import TabbedPanel from '../TabbedPanel/TabbedPanel';
+import TabbedPanel from 'valadaptive-lib/TabbedPanel';
 import RenderSettingsPane from '../RenderSettingsPane/RenderSettingsPane';
-import ResizablePanel from '../ResizablePanel/ResizablePanel';
+import ResizablePanel from 'valadaptive-lib/ResizablePanel';
 import DisclaimerModal from '../DisclaimerModal/DisclaimerModal';
 import {useAppState} from '../../app-state';
 import PanicModal from '../PanicModal/PanicModal';
 import AboutModal from '../AboutModal/AboutModal';
 import CreditsModal from '../CreditsModal/CreditsModal';
-import {ContextMenuItem, Menu, ToggleIcon} from '../Widgets/Widgets';
-import {Overlay} from '../Overlay/Overlay';
+import {ContextMenuItem, Menu} from 'valadaptive-lib/ContextMenu';
+import {ToggleIcon} from 'valadaptive-lib/ToggleButton';
+import {Overlay} from 'valadaptive-lib/Overlay';
 
 const App = () => {
     const {isPortrait, disclaimerModalOpen} = useAppState();

@@ -1,9 +1,9 @@
 import {Formats, WorkerSchema} from './effect-worker.worker';
-import Queue from './queue';
+import Queue from 'valadaptive-lib/util/queue';
 import RpcDispatcher from './worker-rpc';
 import {ResizeFilter, Rotation} from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import {wasmModulePromise} from './ntsc-rs-module';
-import {TypedEvent, TypedEventTarget} from './typed-events';
+import {TypedEvent, TypedEventTarget} from 'valadaptive-lib/util/typed-events';
 
 export type EffectWorker = RpcDispatcher<WorkerSchema>;
 

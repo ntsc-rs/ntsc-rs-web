@@ -16,8 +16,8 @@ import {
 } from 'mediabunny';
 import type {PipelineSettings} from './media-player';
 import EffectWorkerPool, {getRotation} from './effect-worker-pool';
-import Queue from './queue';
-import {TypedEvent, TypedEventTarget} from './typed-events';
+import Queue from 'valadaptive-lib/util/queue';
+import {TypedEvent, TypedEventTarget} from 'valadaptive-lib/util/typed-events';
 import {AppVideoCodec} from '../app-state';
 import {WrappedInput} from './still-image-media';
 import AACEncoder from './aac-codec';

@@ -8,14 +8,14 @@ import {
     SettingDescriptor,
     ResizeFilter,
 } from '../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
-import throttle from './util/throttle';
+import throttle from 'valadaptive-lib/util/throttle';
 import type {StateChangeEvent} from './util/render-job';
 import {GLOBAL_WORKER_POOL, PanicEvent} from './util/effect-worker-pool';
 import OpfsRenderJobManager, {RenderJobLike} from './util/opfs-render-jobs';
 import Directory from './util/signalize-fs';
 import SETTING_DESCRIPTORS from '../ntsc-rs-web-wrapper/build/setting-descriptors';
 import {wasmModulePromise} from './util/ntsc-rs-module';
-import Undoer from './util/undoer';
+import Undoer from 'valadaptive-lib/util/undoer';
 
 const renderJobPromise = import('./util/render-job');
 const settingsListPromise = wasmModulePromise.then(() => new NtscSettingsList());

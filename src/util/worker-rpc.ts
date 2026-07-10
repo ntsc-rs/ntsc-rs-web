@@ -1,4 +1,4 @@
-import {TypedEvent, TypedEventTarget} from './typed-events';
+import {TypedEvent, TypedEventTarget} from 'valadaptive-lib/util/typed-events';
 
 export type MessageSchema = {
     readonly request: {

@@ -7,7 +7,7 @@ import init, {
 } from '../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 
 import {postMessageFromWorker, type MessageFromWorker, type MessageToWorker} from './worker-rpc';
-import Queuetex from './async-queue';
+import AsyncMutex from 'valadaptive-lib/util/async-mutex';
 import encodePng from './encode-png';
 
 export type RenderFrame = {
@@ -82,7 +82,7 @@ export type WorkerSchema =
         };
     };
 
-const wasmMutex = new Queuetex(null);
+const wasmMutex = new AsyncMutex(null);
 let effectData: Promise<{
     effect: NtscEffectBuf,
     settingsList: NtscSettingsList,

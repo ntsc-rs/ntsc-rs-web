@@ -4,7 +4,11 @@ import {Signal} from '@preact/signals';
 import {DescriptorKind, ResizeFilter, SettingDescriptor} from '../../../ntsc-rs-web-wrapper/build/ntsc_rs_web_wrapper';
 import {useCallback, useId} from 'preact/hooks';
 import {useAppState} from '../../app-state';
-import {CheckboxToggle, Dropdown, Slider, SpinBox} from '../Widgets/Widgets';
+
+import {CheckboxToggle} from 'valadaptive-lib/CheckboxToggle';
+import {Dropdown} from 'valadaptive-lib/Dropdown';
+import {Slider} from 'valadaptive-lib/Slider';
+import {SpinBox} from 'valadaptive-lib/SpinBox';
 import classNames from 'clsx';
 import PresetManager from '../PresetManager/PresetManager';
 import SETTING_DESCRIPTORS from '../../../ntsc-rs-web-wrapper/build/setting-descriptors';

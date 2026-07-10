@@ -1,3 +1,6 @@
 [submodule "aac-codec/FFmpeg"]
 	path = aac-codec/FFmpeg
 	url = https://github.com/FFmpeg/FFmpeg
+[submodule "valadaptive-lib"]
+	path = valadaptive-lib
+	url = https://github.com/valadaptive/valadaptive-lib

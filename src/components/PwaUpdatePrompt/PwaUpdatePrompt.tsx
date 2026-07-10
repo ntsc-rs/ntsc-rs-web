@@ -1,11 +1,11 @@
 import {useRegisterSW} from 'virtual:pwa-register/preact';
 import {useEffect} from 'preact/hooks';
 
-import {useAddToast} from '../Toast/Toast';
-import {Motif} from '../../util/motif';
+import {useAddToast} from 'valadaptive-lib/Toast';
+import {Motif} from 'valadaptive-lib/util/motif';
+import {Button} from 'valadaptive-lib/Button';
 
 import style from './style.module.scss';
-import {Button} from '../Widgets/Widgets';
 
 // This toast could be overwhelming, since it appears the first time the page is loaded. Not sure yet whether I want to
 // keep this or not.

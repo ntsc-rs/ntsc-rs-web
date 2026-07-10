@@ -1,21 +1,23 @@
 import style from './style.module.scss';
 
 import {AppVideoCodec, useAppState} from '../../app-state';
-import {Button, Dropdown, SpinBox, timestampSpinboxDisplay} from '../Widgets/Widgets';
+import {Button} from 'valadaptive-lib/Button';
+import {Dropdown} from 'valadaptive-lib/Dropdown';
+import {SpinBox} from 'valadaptive-lib/SpinBox';
 import {batch, useComputed, useSignal} from '@preact/signals';
 import {useCallback, useLayoutEffect} from 'preact/hooks';
 import {SliderWithSpinBox} from '../SettingsList/SettingsList';
 import type {RenderJobState} from '../../util/render-job';
-import {formatTimestamp, formatTimestampHuman} from '../../util/format-timestamp';
-import Icon, {IconButton} from '../Icon/Icon';
-import {Motif} from '../../util/motif';
+import {formatTimestamp, formatTimestampHuman, timestampSpinboxDisplay} from '../../util/format-timestamp';
+import Icon, {IconButton} from 'valadaptive-lib/Icon';
+import {Motif} from 'valadaptive-lib/util/motif';
 import classNames from 'clsx';
 import {RenderJobLike} from '../../util/opfs-render-jobs';
-import {useAddErrorToast} from '../Toast/Toast';
-import saveToFile from '../../util/save-to-file';
-import formatFileSize from '../../util/format-file-size';
+import {useAddErrorToast} from 'valadaptive-lib/Toast';
+import saveToFile from 'valadaptive-lib/util/save-to-file';
+import formatFileSize from 'valadaptive-lib/util/format-file-size';
 import {extensionForCodec} from '../../util/extension-for-codec';
-import Loader from '../Loader/Loader';
+import Loader from 'valadaptive-lib/Loader';
 
 const renderJobPromise = import('../../util/render-job');
 

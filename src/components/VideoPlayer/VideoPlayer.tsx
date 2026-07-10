@@ -5,29 +5,24 @@ import {EffectPreviewMode, useAppState} from '../../app-state';
 import type MediaPlayer from '../../util/media-player';
 import type {FrameEvent, StateChangeEvent} from '../../util/media-player';
 import {batch, Signal, useComputed, useSignal, useSignalEffect} from '@preact/signals';
-import {
-    CheckboxToggle,
-    ImperativeSlider,
-    ImperativeSpinBox,
-    SelectableButton,
-    Slider,
-    SpinBox,
-    timestampSpinboxDisplay,
-    ToggleIcon,
-} from '../Widgets/Widgets';
-import Icon, {IconButton} from '../Icon/Icon';
-import showOpenFilePicker from '../../util/file-picker';
-import {useAddErrorToast} from '../Toast/Toast';
+import {CheckboxToggle} from 'valadaptive-lib/CheckboxToggle';
+import {ImperativeSlider, Slider} from 'valadaptive-lib/Slider';
+import {ImperativeSpinBox, SpinBox} from 'valadaptive-lib/SpinBox';
+import {SelectableButton, ToggleIcon} from 'valadaptive-lib/ToggleButton';
+import {timestampSpinboxDisplay} from '../../util/format-timestamp';
+import Icon, {IconButton} from 'valadaptive-lib/Icon';
+import showOpenFilePicker from 'valadaptive-lib/util/file-picker';
+import {useAddErrorToast} from 'valadaptive-lib/Toast';
 import {CSSProperties, TargetedEvent} from 'preact';
 import {formatTimestamp} from '../../util/format-timestamp';
 import classNames from 'clsx';
-import Loader from '../Loader/Loader';
+import Loader from 'valadaptive-lib/Loader';
 import {GLOBAL_WORKER_POOL} from '../../util/effect-worker-pool';
-import saveToFile from '../../util/save-to-file';
+import saveToFile from 'valadaptive-lib/util/save-to-file';
 import useMediaQuery from '../../util/use-media-query';
-import useFloating from '../../util/floating';
+import useFloating from 'valadaptive-lib/util/floating';
 import {ComputePositionConfig, offset, shift, size} from '@floating-ui/dom';
-import {Overlay} from '../Overlay/Overlay';
+import {Overlay} from 'valadaptive-lib/Overlay';
 
 const mediaPlayerModule = import('../../util/media-player');
 

@@ -1,7 +1,7 @@
 import style from './style.module.scss';
 
 import {useAppState} from '../../app-state';
-import Modal from '../Modal/Modal';
+import Modal from 'valadaptive-lib/Modal';
 
 const PanicModal = () => {
     const {panicMessage} = useAppState();

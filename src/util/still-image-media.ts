@@ -1,5 +1,5 @@
 import {ALL_FORMATS, AnyIterable, BlobSource, Input, InputAudioTrack, VideoSample, VideoSampleSink} from 'mediabunny';
-import {TypedEvent, TypedEventTarget} from './typed-events';
+import {TypedEvent, TypedEventTarget} from 'valadaptive-lib/util/typed-events';
 
 export interface VideoSampleSinkLike {
     getSample(timestamp: number): Promise<VideoSample | null>;

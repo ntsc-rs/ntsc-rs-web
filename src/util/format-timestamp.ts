@@ -51,4 +51,13 @@ const parseTimestamp = (timestamp: string): number | null => {
     return seconds;
 };
 
-export {formatTimestamp, formatTimestampHuman, parseTimestamp};
+const timestampSpinboxDisplay = {
+    display(value: number) {
+        return formatTimestamp(value);
+    },
+    parse(value: string) {
+        return parseTimestamp(value);
+    },
+};
+
+export {formatTimestamp, formatTimestampHuman, parseTimestamp, timestampSpinboxDisplay};
