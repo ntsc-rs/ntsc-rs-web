@@ -45,6 +45,7 @@
     color: var(--text);
     line-height: 1.5;
     overflow: auto;
+    height: auto;
 
     &:hover {
         background-color: var(--toggle-hover);
