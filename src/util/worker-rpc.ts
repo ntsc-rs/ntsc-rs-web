@@ -142,7 +142,7 @@ export default class RpcDispatcher<T extends MessageSchema> extends
         if (data.type === handlers.respName) {
             handlers.resolve(data.message);
         } else if (data.type === 'error') {
-            handlers.reject(data.message as Error);
+            handlers.reject(data.message);
         }
         this.messages.delete(data.originId);
     };

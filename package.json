@@ -18,18 +18,18 @@
 		"wasm-feature-detect": "^1.8.0"
 	},
 	"devDependencies": {
-		"@eslint/js": "^9.12.0",
+		"@eslint/js": "^10.0.1",
 		"@preact/preset-vite": "^2.9.3",
 		"@stylistic/eslint-plugin": "^5.6.1",
-		"@types/node": "^25.0.9",
+		"@types/node": "^26.1.1",
 		"@types/wicg-file-system-access": "^2023.10.7",
 		"@vitejs/plugin-basic-ssl": "^2.1.0",
-		"eslint": "^9.12.0",
+		"eslint": "^10.7.0",
 		"sass-embedded": "^1.83.0",
-		"sonda": "^0.10.1",
-		"typescript": "^5.6.2",
+		"sonda": "^0.14.0",
+		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.8.0",
-		"vite": "^7.3.0",
+		"vite": "^8.1.5",
 		"vite-plugin-pwa": "^1.2.0"
 	}
 }

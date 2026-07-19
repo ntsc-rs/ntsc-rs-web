@@ -136,7 +136,7 @@ const NO_DRAG_CONFIG: DragConfig<PresetDragData> = {
 
 const NO_DROP_CONFIG: DropConfig<DragItem<PresetDragData> | DataTransferItemList> = {
     onDrop: () => {},
-    canDropItem: (item: Droppable): item is TypedDroppable<DragItem<PresetDragData> | DataTransferItemList> => false,
+    canDropItem: (_item: Droppable): _item is TypedDroppable<DragItem<PresetDragData> | DataTransferItemList> => false,
     disabled: true,
 };
 
