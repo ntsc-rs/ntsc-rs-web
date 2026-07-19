@@ -1,12 +1,14 @@
-import {defineConfig, Plugin} from 'vite';
+import {defineConfig} from 'vite';
 import preact from '@preact/preset-vite';
-//import Sonda from 'sonda/vite';
 
-import wasm from 'vite-plugin-wasm';
-import topLevelAwait from 'vite-plugin-top-level-await';
 import {VitePWA} from 'vite-plugin-pwa';
 import fs from 'node:fs';
 import type {License, LicenseList} from './cargo-about-types';
+
+let Sonda = null;
+if (process.env.SONDA) {
+    Sonda = (await import('sonda/vite')).default;
+}
 
 // https://github.com/vitejs/vite/blob/a2aab8d/packages/vite/src/node/plugins/license.ts
 type LicenseEntry = {
@@ -39,8 +41,6 @@ type CreditsLicense = {
 export default defineConfig({
     plugins: [
         preact(),
-        wasm() as Plugin,
-        topLevelAwait(),
         {
             name: 'isolation',
             configureServer(server) {
@@ -51,7 +51,7 @@ export default defineConfig({
                 });
             },
         },
-        //Sonda({gzip: true}),
+        Sonda?.({gzip: true}),
         VitePWA({
             registerType: 'prompt',
             workbox: {
