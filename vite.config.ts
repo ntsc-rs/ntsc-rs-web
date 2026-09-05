@@ -3,7 +3,7 @@ import preact from '@preact/preset-vite';
 
 import {VitePWA} from 'vite-plugin-pwa';
 import fs from 'node:fs';
-import type {License, LicenseList} from './cargo-about-types';
+import type {License, LicenseList} from './cargo-about-types.ts';
 
 let Sonda = null;
 if (process.env.SONDA) {
