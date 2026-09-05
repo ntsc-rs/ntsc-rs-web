@@ -1,8 +1,8 @@
 diff --git a/libavcodec/encode.c b/libavcodec/encode.c
-index 407bd89..ebfbd91 100644
+index 56b2f436..99847bac 100644
 --- a/libavcodec/encode.c
 +++ b/libavcodec/encode.c
-@@ -768,7 +768,6 @@ int ff_encode_preinit(AVCodecContext *avctx)
+@@ -821,7 +821,6 @@ int ff_encode_preinit(AVCodecContext *avctx)
      }
  
      switch (avctx->codec_type) {
@@ -11,7 +11,7 @@ index 407bd89..ebfbd91 100644
      }
      if (ret < 0)
 diff --git a/libavcodec/get_buffer.c b/libavcodec/get_buffer.c
-index b391adf..49563bb 100644
+index 1e0cfc21..49563bb0 100644
 --- a/libavcodec/get_buffer.c
 +++ b/libavcodec/get_buffer.c
 @@ -82,59 +82,6 @@ static int update_frame_pool(AVCodecContext *avctx, AVFrame *frame)
@@ -31,7 +31,7 @@ index b391adf..49563bb 100644
 -        do {
 -            // NOTE: do not align linesizes individually, this breaks e.g. assumptions
 -            // that linesize[0] == 2*linesize[1] in the MPEG-encoder for 4:2:2
--            ret = av_image_fill_linesizes(linesize, avctx->pix_fmt, w);
+-            ret = av_image_fill_linesizes(linesize, frame->format, w);
 -            if (ret < 0)
 -                goto fail;
 -            // increase alignment of w for next try (rhs gives the lowest bit set in w)
@@ -44,7 +44,7 @@ index b391adf..49563bb 100644
 -
 -        for (i = 0; i < 4; i++)
 -            linesize1[i] = linesize[i];
--        ret = av_image_fill_plane_sizes(size, avctx->pix_fmt, h, linesize1);
+-        ret = av_image_fill_plane_sizes(size, frame->format, h, linesize1);
 -        if (ret < 0)
 -            goto fail;
 -
@@ -111,7 +111,7 @@ index b391adf..49563bb 100644
          return audio_get_buffer(avctx, frame);
      default:
 diff --git a/libavutil/frame.c b/libavutil/frame.c
-index be30eb0..a82608c 100644
+index be30eb09..a82608c6 100644
 --- a/libavutil/frame.c
 +++ b/libavutil/frame.c
 @@ -208,8 +208,6 @@ int av_frame_get_buffer(AVFrame *frame, int align)

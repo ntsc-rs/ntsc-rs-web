@@ -5,12 +5,10 @@ mod utils;
 extern crate alloc;
 
 use fast_image_resize::{
-    FilterType, ResizeAlg, ResizeOptions, Resizer, SrcCropping,
-    images::TypedImage,
-    pixels::U8x4,
+    FilterType, ResizeAlg, ResizeOptions, Resizer, SrcCropping, images::TypedImage, pixels::U8x4,
 };
 use ntsc_rs::{
-    NtscEffect, NtscEffectFullSettings,
+    NtscEffect,
     yiq_fielding::{BlitInfo, DeinterlaceMode, PixelFormat, Rect, Rgbx, YiqView, pixel_bytes_for},
 };
 
@@ -27,13 +25,13 @@ macro_rules! console_log {
 }
 
 #[wasm_bindgen]
-pub struct NtscConfigurator(NtscEffectFullSettings);
+pub struct NtscConfigurator(NtscEffect);
 
 #[wasm_bindgen]
 impl NtscConfigurator {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self(NtscEffectFullSettings::default())
+        Self(NtscEffect::default())
     }
 }
 
@@ -81,7 +79,7 @@ impl NtscEffectBuf {
     /// Update the effect settings.
     #[wasm_bindgen(js_name = "setEffectSettings")]
     pub fn set_effect_settings(&mut self, settings: NtscConfigurator) {
-        self.effect = settings.0.into();
+        self.effect = settings.0;
     }
 
     /// Get a pointer to the input/source buffer. This is what the effect will read from, and what you should write to.
@@ -173,10 +171,7 @@ impl NtscEffectBuf {
 
         // Step 2: rotate
         if needs_rotate {
-            maybe_resize(
-                &mut self.rotate_dst,
-                frame_w * frame_h * BYTES_PER_PIXEL,
-            );
+            maybe_resize(&mut self.rotate_dst, frame_w * frame_h * BYTES_PER_PIXEL);
             let rotate_src = if needs_resize {
                 &*self.resize_dst
             } else {
@@ -216,12 +211,17 @@ impl NtscEffectBuf {
                 field,
             );
             view.set_from_strided_buffer::<Rgbx, u8, _>(
+                ntsc_rs::ctx::global(),
                 pre_effect_src,
                 BlitInfo::from_full_frame(frame_w, frame_h, frame_w * BYTES_PER_PIXEL),
                 (),
             );
-            self.effect
-                .apply_effect_to_yiq(&mut view, frame_num, [1.0, 1.0]);
+            self.effect.apply_effect_to_yiq(
+                ntsc_rs::ctx::global(),
+                &mut view,
+                frame_num,
+                [1.0, 1.0],
+            );
 
             let dst_rect = Rect::new(
                 rect_top as usize,
@@ -255,6 +255,7 @@ impl NtscEffectBuf {
             };
 
             view.write_to_strided_buffer::<Rgbx, u8, _>(
+                ntsc_rs::ctx::global(),
                 &mut self.effect_dst,
                 dst_blit_info,
                 DeinterlaceMode::Bob,
@@ -268,8 +269,7 @@ impl NtscEffectBuf {
             // This is safe because JS gets a fresh Uint8Array view from inputBuffer() each
             // frame and never retains it across applyEffect calls, so swapping self.src is
             // fine too.
-            let no_padding =
-                frame_w_padded == frame_w && frame_h_padded == frame_h;
+            let no_padding = frame_w_padded == frame_w && frame_h_padded == frame_h;
             if no_padding {
                 if needs_rotate {
                     std::mem::swap(&mut self.rotate_dst, &mut self.effect_dst);

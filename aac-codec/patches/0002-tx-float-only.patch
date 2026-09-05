@@ -1,5 +1,5 @@
 diff --git a/libavutil/tx.c b/libavutil/tx.c
-index 1234567..abcdefg 100644
+index 05c132ad..56b605cb 100644
 --- a/libavutil/tx.c
 +++ b/libavutil/tx.c
 @@ -339,8 +339,6 @@ static const FFTXCodelet * const ff_tx_null_list[] = {

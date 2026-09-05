@@ -1,8 +1,8 @@
 diff --git a/libavcodec/aacenc.c b/libavcodec/aacenc.c
-index b8df8dc..d1f7985 100644
+index 94558ff2..91a825d4 100644
 --- a/libavcodec/aacenc.c
 +++ b/libavcodec/aacenc.c
-@@ -1204,16 +1204,13 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
+@@ -1177,16 +1177,13 @@ static av_cold int aac_encode_init(AVCodecContext *avctx)
      }
  
      if (s->needs_pce) {

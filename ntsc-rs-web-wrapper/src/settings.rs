@@ -1,97 +1,68 @@
 use ntsc_rs::{
-    NtscEffectFullSettings,
+    NtscEffect,
     settings::{EnumValue, SettingDescriptor, SettingKind, Settings as _, SettingsList},
 };
-use sval_json::stream_to_string;
+use std::fmt::Write as _;
 use wasm_bindgen::prelude::*;
 
 use crate::NtscConfigurator;
 
 #[wasm_bindgen]
-pub struct NtscSettingsList(SettingsList<NtscEffectFullSettings>);
+pub struct NtscSettingsList(SettingsList<NtscEffect>);
 
 struct DescriptorList<'a> {
-    descriptors: &'a [SettingDescriptor<NtscEffectFullSettings>],
-    default_settings: &'a NtscEffectFullSettings,
-    legacy_default_settings: &'a NtscEffectFullSettings,
+    descriptors: &'a [SettingDescriptor<NtscEffect>],
+    default_settings: &'a NtscEffect,
+    legacy_default_settings: &'a NtscEffect,
 }
 
-trait SvalValue<'sval> {
-    fn write(&self, stream: &mut impl sval::Stream<'sval>) -> sval::Result;
-}
+struct JsonStr<'a>(&'a str);
+struct OptionalJsonStr<'a>(Option<&'a str>);
 
-impl<'sval> SvalValue<'sval> for f32 {
-    fn write(&self, stream: &mut impl sval::Stream<'sval>) -> sval::Result {
-        stream.f32(*self)
-    }
-}
+impl std::fmt::Display for JsonStr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_char('"')?;
 
-impl<'sval> SvalValue<'sval> for i32 {
-    fn write(&self, stream: &mut impl sval::Stream<'sval>) -> sval::Result {
-        stream.i32(*self)
-    }
-}
+        let bytes = self.0.as_bytes();
+        let mut start = 0;
+        for (i, &byte) in bytes.iter().enumerate() {
+            if matches!(byte, 0..=0x1f | b'"' | b'\\') {
+                if start < i {
+                    f.write_str(&self.0[start..i])?;
+                }
+                start = i + 1;
 
-impl<'sval> SvalValue<'sval> for u32 {
-    fn write(&self, stream: &mut impl sval::Stream<'sval>) -> sval::Result {
-        stream.u32(*self)
-    }
-}
-
-impl<'sval> SvalValue<'sval> for bool {
-    fn write(&self, stream: &mut impl sval::Stream<'sval>) -> sval::Result {
-        stream.bool(*self)
-    }
-}
-
-impl<'sval> SvalValue<'sval> for &'sval str {
-    fn write(&self, stream: &mut impl sval::Stream<'sval>) -> sval::Result {
-        stream.text(self)
-    }
-}
-
-impl<'sval, T: SvalValue<'sval>> SvalValue<'sval> for Option<T> {
-    fn write(&self, stream: &mut impl sval::Stream<'sval>) -> sval::Result {
-        match self {
-            Some(v) => v.write(stream),
-            None => stream.null(),
+                match byte {
+                    0x08 => f.write_str("\\b")?,
+                    0x09 => f.write_str("\\t")?,
+                    0x0a => f.write_str("\\n")?,
+                    0x0c => f.write_str("\\f")?,
+                    0x0d => f.write_str("\\r")?,
+                    b'"' => f.write_str("\\\"")?,
+                    b'\\' => f.write_str("\\\\")?,
+                    _ => {
+                        write!(f, "\\u{:04x}", byte)?;
+                    }
+                }
+            }
         }
+
+        if start < bytes.len() {
+            f.write_str(&self.0[start..])?;
+        }
+
+        f.write_char('"')?;
+
+        Ok(())
     }
 }
 
-trait StreamExt<'sval> {
-    fn text(&mut self, text: &'sval str) -> sval::Result;
-    fn map_kv<T: SvalValue<'sval>>(&mut self, key: &'sval str, value: T) -> sval::Result;
-    fn map_key(&mut self, key: &'sval str) -> sval::Result;
-}
-
-impl<'sval, T> StreamExt<'sval> for T
-where
-    T: sval::Stream<'sval>,
-{
-    fn text(&mut self, text: &'sval str) -> sval::Result {
-        self.text_begin(Some(text.len()))?;
-        self.text_fragment(text)?;
-        self.text_end()?;
-        Ok(())
-    }
-
-    fn map_kv<V: SvalValue<'sval>>(&mut self, key: &'sval str, value: V) -> sval::Result {
-        self.map_key_begin()?;
-        self.text(key)?;
-        self.map_key_end()?;
-        self.map_value_begin()?;
-        value.write(self)?;
-        self.map_value_end()?;
-        Ok(())
-    }
-
-    fn map_key(&mut self, key: &'sval str) -> sval::Result {
-        self.map_key_begin()?;
-        self.text(key)?;
-        self.map_key_end()?;
-
-        Ok(())
+impl std::fmt::Display for OptionalJsonStr<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.0 {
+            Some(s) => JsonStr(s).fmt(f),
+            None => f.write_str("null"),
+        }
     }
 }
 
@@ -105,142 +76,109 @@ pub enum NtscDescriptorKind {
     Group,
 }
 
-impl sval::Value for DescriptorList<'_> {
-    fn stream<'sval, S: sval::Stream<'sval> + ?Sized>(
-        &'sval self,
-        mut stream: &mut S,
-    ) -> sval::Result {
+impl std::fmt::Display for DescriptorList<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_char('[')?;
         let default_settings = self.default_settings;
-        stream.seq_begin(Some(self.descriptors.len()))?;
 
-        for descriptor in self.descriptors {
-            stream.seq_value_begin()?;
-            stream.map_begin(None)?;
-
-            stream.map_kv("label", descriptor.label)?;
-            stream.map_kv("description", descriptor.description)?;
-            stream.map_kv("id", descriptor.id.id)?;
-            stream.map_kv("idName", descriptor.id.name)?;
+        for (i, descriptor) in self.descriptors.iter().enumerate() {
+            let label = JsonStr(&descriptor.label);
+            let description = OptionalJsonStr(descriptor.description.as_deref());
+            let id_name = JsonStr(descriptor.id.name);
+            let id_num = descriptor.id.id;
+            let kind = match &descriptor.kind {
+                SettingKind::Enumeration { .. } => NtscDescriptorKind::Enumeration as u32,
+                SettingKind::Percentage { .. } => NtscDescriptorKind::Percentage as u32,
+                SettingKind::IntRange { .. } => NtscDescriptorKind::IntRange as u32,
+                SettingKind::FloatRange { .. } => NtscDescriptorKind::FloatRange as u32,
+                SettingKind::Boolean => NtscDescriptorKind::Boolean as u32,
+                SettingKind::Group { .. } => NtscDescriptorKind::Group as u32,
+            };
+            write!(
+                f,
+                r#"{{"label":{label},"description":{description},"id":{id_num},"idName":{id_name},"kind":{kind},"value":"#
+            )?;
 
             match &descriptor.kind {
-                SettingKind::Enumeration { options, .. } => {
+                SettingKind::Enumeration { options } => {
+                    write!(f, r#"{{"options":["#)?;
+                    for (i, option) in options.iter().enumerate() {
+                        let label = JsonStr(option.label);
+                        let description = OptionalJsonStr(option.description);
+                        let index = option.index;
+                        write!(
+                            f,
+                            r#"{{"label":{label},"description":{description},"index":{index}}}"#
+                        )?;
+
+                        if i != options.len() - 1 {
+                            f.write_char(',')?;
+                        }
+                    }
                     let default_value = default_settings
                         .get_field::<EnumValue>(&descriptor.id)
-                        .unwrap();
-
-                    stream.map_kv("kind", NtscDescriptorKind::Enumeration as u32)?;
-                    stream.map_key("value")?;
-                    stream.map_value_begin()?;
-
-                    stream.map_begin(None)?;
-                    stream.map_key("options")?;
-                    stream.map_value_begin()?;
-                    stream.seq_begin(Some(options.len()))?;
-                    for option in options {
-                        stream.seq_value_begin()?;
-                        stream.map_begin(None)?;
-                        stream.map_kv("label", option.label)?;
-                        stream.map_kv("description", option.description)?;
-                        stream.map_kv("index", option.index)?;
-                        stream.map_end()?;
-                        stream.seq_value_end()?;
-                    }
-                    stream.seq_end()?;
-                    stream.map_value_end()?;
-                    stream.map_kv("defaultValue", default_value.0)?;
-                    stream.map_end()?;
-
-                    stream.map_value_end()?;
+                        .unwrap()
+                        .0;
+                    write!(f, r#"],"defaultValue":{default_value}}}"#)?;
                 }
-                SettingKind::Percentage { logarithmic, .. } => {
+                SettingKind::Percentage { logarithmic } => {
                     let default_value = default_settings.get_field::<f32>(&descriptor.id).unwrap();
 
-                    stream.map_kv("kind", NtscDescriptorKind::Percentage as u32)?;
-                    stream.map_key("value")?;
-                    stream.map_value_begin()?;
-
-                    stream.map_begin(None)?;
-                    stream.map_kv("logarithmic", *logarithmic)?;
-                    stream.map_kv("defaultValue", default_value)?;
-                    stream.map_end()?;
-
-                    stream.map_value_end()?;
+                    write!(
+                        f,
+                        r#"{{"logarithmic":{logarithmic},"defaultValue":{default_value}}}"#
+                    )?;
                 }
-                SettingKind::IntRange { range, .. } => {
+                SettingKind::IntRange { range } => {
+                    let min = *range.start();
+                    let max = *range.end();
                     let default_value = default_settings.get_field::<i32>(&descriptor.id).unwrap();
 
-                    stream.map_kv("kind", NtscDescriptorKind::IntRange as u32)?;
-                    stream.map_key("value")?;
-                    stream.map_value_begin()?;
-
-                    stream.map_begin(None)?;
-                    stream.map_kv("min", *range.start())?;
-                    stream.map_kv("max", *range.end())?;
-                    stream.map_kv("defaultValue", default_value)?;
-                    stream.map_end()?;
-
-                    stream.map_value_end()?;
+                    write!(
+                        f,
+                        r#"{{"min":{min},"max":{max},"defaultValue":{default_value}}}"#
+                    )?;
                 }
-                SettingKind::FloatRange {
-                    range, logarithmic, ..
-                } => {
+                SettingKind::FloatRange { range, logarithmic } => {
+                    let min = *range.start();
+                    let max = *range.end();
                     let default_value = default_settings.get_field::<f32>(&descriptor.id).unwrap();
 
-                    stream.map_kv("kind", NtscDescriptorKind::FloatRange as u32)?;
-                    stream.map_key("value")?;
-                    stream.map_value_begin()?;
-
-                    stream.map_begin(None)?;
-                    stream.map_kv("min", *range.start())?;
-                    stream.map_kv("max", *range.end())?;
-                    stream.map_kv("logarithmic", *logarithmic)?;
-                    stream.map_kv("defaultValue", default_value)?;
-                    stream.map_end()?;
-
-                    stream.map_value_end()?;
+                    write!(
+                        f,
+                        r#"{{"min":{min},"max":{max},"logarithmic":{logarithmic},"defaultValue":{default_value}}}"#
+                    )?;
                 }
-                SettingKind::Boolean { .. } => {
+                SettingKind::Boolean => {
                     let default_value = default_settings.get_field::<bool>(&descriptor.id).unwrap();
 
-                    stream.map_kv("kind", NtscDescriptorKind::Boolean as u32)?;
-                    stream.map_key("value")?;
-                    stream.map_value_begin()?;
-
-                    stream.map_begin(None)?;
-                    stream.map_kv("defaultValue", default_value)?;
-                    stream.map_end()?;
-
-                    stream.map_value_end()?;
+                    write!(f, r#"{{"defaultValue":{default_value}}}"#)?;
                 }
-                SettingKind::Group { children, .. } => {
+                SettingKind::Group { children } => {
                     let default_value = default_settings.get_field::<bool>(&descriptor.id).unwrap();
 
-                    stream.map_kv("kind", NtscDescriptorKind::Group as u32)?;
-                    stream.map_key("value")?;
-                    stream.map_value_begin()?;
-
-                    stream.map_begin(None)?;
-
-                    stream.map_key("children")?;
-                    let dl = DescriptorList {
+                    let children = DescriptorList {
                         descriptors: children,
-                        default_settings: self.default_settings,
+                        default_settings,
                         legacy_default_settings: self.legacy_default_settings,
                     };
-                    stream.value_computed(&dl)?;
 
-                    stream.map_kv("defaultValue", default_value)?;
-                    stream.map_end()?;
-
-                    stream.map_value_end()?;
+                    write!(
+                        f,
+                        r#"{{"children":{children},"defaultValue":{default_value}}}"#
+                    )?;
                 }
             }
 
-            stream.map_end()?;
+            if i == self.descriptors.len() - 1 {
+                // Avoid trailing comma for last element.
+                write!(f, "}}")?;
+            } else {
+                write!(f, "}},")?;
+            }
         }
 
-        stream.seq_end()?;
-
+        f.write_char(']')?;
         Ok(())
     }
 }
@@ -249,19 +187,19 @@ impl sval::Value for DescriptorList<'_> {
 impl NtscSettingsList {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self(SettingsList::<NtscEffectFullSettings>::new())
+        Self(SettingsList::<NtscEffect>::new())
     }
 
     #[wasm_bindgen(js_name = "getSettingsList")]
     pub fn get_settings_list(&self) -> String {
-        let default_settings = NtscEffectFullSettings::default();
-        let legacy_default_settings = NtscEffectFullSettings::legacy_value();
+        let default_settings = NtscEffect::default();
+        let legacy_default_settings = NtscEffect::legacy_value();
         let dl = DescriptorList {
             descriptors: &self.0.setting_descriptors,
             default_settings: &default_settings,
             legacy_default_settings: &legacy_default_settings,
         };
-        return stream_to_string(&dl).unwrap();
+        dl.to_string()
     }
 
     #[wasm_bindgen(js_name = "settingsFromJSON")]
@@ -273,19 +211,18 @@ impl NtscSettingsList {
 
     #[wasm_bindgen(js_name = "parsePreset")]
     pub fn parse_preset(&self, json: &str) -> Result<String, String> {
-        Ok(stream_to_string(
-            self.0
-                .to_json(&self.0.from_json(json).map_err(|e| e.to_string())?),
-        )
-        .map_err(|e| e.to_string())?)
+        Ok(self
+            .0
+            .to_json_string(&self.0.from_json(json).map_err(|e| e.to_string())?)
+            .map_err(|e| e.to_string())?)
     }
 
     #[wasm_bindgen(js_name = "defaultPreset")]
     pub fn default_preset(&self) -> Result<String, String> {
-        Ok(
-            stream_to_string(self.0.to_json(&NtscEffectFullSettings::default()))
-                .map_err(|e| e.to_string())?,
-        )
+        Ok(self
+            .0
+            .to_json_string(&NtscEffect::default())
+            .map_err(|e| e.to_string())?)
     }
 }
 

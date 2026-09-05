@@ -1,5 +1,5 @@
 diff --git a/libavcodec/aaccoder.c b/libavcodec/aaccoder.c
-index 7f1c4cd..ff0539a 100644
+index 7f1c4cdc..ff0539a4 100644
 --- a/libavcodec/aaccoder.c
 +++ b/libavcodec/aaccoder.c
 @@ -841,19 +841,6 @@ static void search_for_ms(AACEncContext *s, ChannelElement *cpe)
