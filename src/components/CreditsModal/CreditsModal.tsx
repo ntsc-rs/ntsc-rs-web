@@ -14,10 +14,13 @@ type CreditsLicense = {
     text?: number | {name: string; text: number}[];
 };
 
+type LicenseGroup = {
+    title: string,
+    licenses: CreditsLicense[]
+};
+
 type LicensesData = {
-    js: CreditsLicense[];
-    rust: CreditsLicense[];
-    c: CreditsLicense[];
+    groups: LicenseGroup[],
     texts: string[];
 };
 
@@ -75,48 +78,20 @@ const CreditsModal = ({onClose}: {onClose: () => void}) => {
                 const {data} = loadState.value;
                 return (
                     <div className={style.licenseList}>
-                        {data.rust.length > 0 && (
+                        {data.groups.map(({title, licenses}, i) => (
                             <>
-                                <h2>Rust dependencies</h2>
-                                {data.rust.map((dep, i) => (
+                                <h2>{title}</h2>
+                                {licenses.map((dep, j) => (
                                     <LicenseItem
-                                        key={`rust-${i}`}
+                                        key={`${i}-${j}`}
                                         dep={dep}
                                         texts={data.texts}
-                                        index={`rust-${i}`}
+                                        index={`${i}-${j}`}
                                         expandedLicense={expandedLicense}
                                     />
                                 ))}
                             </>
-                        )}
-                        {data.js.length > 0 && (
-                            <>
-                                <h2>JavaScript dependencies</h2>
-                                {data.js.map((dep, i) => (
-                                    <LicenseItem
-                                        key={`js-${i}`}
-                                        dep={dep}
-                                        texts={data.texts}
-                                        index={`js-${i}`}
-                                        expandedLicense={expandedLicense}
-                                    />
-                                ))}
-                            </>
-                        )}
-                        {data.c.length > 0 && (
-                            <>
-                                <h2>C dependencies</h2>
-                                {data.c.map((dep, i) => (
-                                    <LicenseItem
-                                        key={`c-${i}`}
-                                        dep={dep}
-                                        texts={data.texts}
-                                        index={`c-${i}`}
-                                        expandedLicense={expandedLicense}
-                                    />
-                                ))}
-                            </>
-                        )}
+                        ))}
                     </div>
                 );
             })()}
@@ -167,14 +142,16 @@ const LicenseItem = ({dep, texts, index, expandedLicense}: {
                 )}
             </Button>
             {isExpanded && hasText && (
-                <pre className={style.licenseText}>
-                    {typeof dep.text === 'number' ?
-                        texts[dep.text] :
-                        Array.isArray(dep.text) ?
-                            dep.text.map(entry => texts[entry.text]).join('\n\n---\n\n') :
-                            ''
-                    }
-                </pre>
+                (typeof dep.text === 'number' ?
+                    <pre className={style.licenseText}>
+                        {texts[dep.text]}
+                    </pre> :
+                    dep.text!.map((entry, i) =>
+                        <pre className={style.licenseText} key={i}>
+                            {texts[entry.text]}
+                        </pre>,
+                    )
+                )
             )}
         </div>
     );

@@ -11,7 +11,7 @@ See the `patches` folder and `stubs.c` for more.
 
 We also ship the WebAssembly directly instead of string-embedding it into the JS. The combined size optimizations bring us to 226KB vs. 594KB for `@mediabunny/aac-encoder`.
 
-You can build this using Emscripten, either by installing [emsdk](https://github.com/emscripten-core/emsdk) and running `build.sh`, or just running it in Docker via:
+You can build this using Emscripten, either by installing [emsdk](https://github.com/emscripten-core/emsdk) and running `configure_wasm.sh` and `build.sh`, or just running it in Docker via:
 
 ```bash
 npm run build-aac-codec
