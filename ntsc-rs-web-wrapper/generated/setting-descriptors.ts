@@ -56,6 +56,28 @@ const SETTING_DESCRIPTORS: SettingDescriptor[] = [
         }
     },
     {
+        "label": "Video standard",
+        "description": "The analog color TV standard to emulate. PAL uses a higher color subcarrier frequency, equal U/V chroma bandwidth, and flips the phase of the V signal every line. The comb and 2D chroma demodulation filters are only available for NTSC; PAL falls back to the notch filter.",
+        "id": 62,
+        "idName": "video_standard",
+        "kind": 0,
+        "value": {
+            "options": [
+                {
+                    "label": "NTSC",
+                    "description": "NTSC (North America, Japan).",
+                    "index": 0
+                },
+                {
+                    "label": "PAL",
+                    "description": "PAL (Europe, Australia, much of Asia and Africa).",
+                    "index": 1
+                }
+            ],
+            "defaultValue": 0
+        }
+    },
+    {
         "label": "Lowpass filter type",
         "description": "The low-pass filter to use throughout the effect.",
         "id": 46,
