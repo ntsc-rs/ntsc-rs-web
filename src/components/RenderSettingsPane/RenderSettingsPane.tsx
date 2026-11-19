@@ -31,12 +31,17 @@ type PaneState =
 
 const hasDirectFSSupport = 'showSaveFilePicker' in window;
 
-const ntscified = (sourceFileName: string, videoCodec: AppVideoCodec) => {
-    const fileStub = sourceFileName.replace(/\..+/, '') + '_ntsc';
+// Value of the "video_standard" setting for PAL (see VideoStandard in ntsc-rs).
+const VIDEO_STANDARD_PAL = 1;
+
+const ntscified = (sourceFileName: string, videoCodec: AppVideoCodec, videoStandard: number | boolean | undefined) => {
+    const suffix = videoStandard === VIDEO_STANDARD_PAL ? '_pal' : '_ntsc';
+    const fileStub = sourceFileName.replace(/\..+/, '') + suffix;
     return `${fileStub}.${extensionForCodec(videoCodec)}`;
 };
 
 const RenderJobComponent = ({job, onRemove}: {job: RenderJobLike, onRemove: (job: RenderJobLike) => void}) => {
+    const appState = useAppState();
     const progress = useSignal({loaded: 0, total: 0});
     const eta = useSignal<number | null>(null);
     const state = useSignal<RenderJobState>(job.state);
@@ -69,8 +74,11 @@ const RenderJobComponent = ({job, onRemove}: {job: RenderJobLike, onRemove: (job
 
     const downloadRender = useCallback(() => {
         if (job.state.state !== 'completed' || !job.state.file) return;
-        saveToFile(ntscified(job.sourceFileName, job.videoCodec), job.state.file);
-    }, [job]);
+        saveToFile(
+            ntscified(job.sourceFileName, job.videoCodec, appState.settings.video_standard?.value),
+            job.state.file,
+        );
+    }, [job, appState]);
 
     let renderJobStatus;
     switch (state.value.state) {
@@ -201,7 +209,7 @@ const RenderSettingsPane = () => {
         const mediaBlob = appState.mediaBlob.value;
         if (!appState.renderVideoCodec.value || !mediaBlob) return;
         window.showSaveFilePicker({
-            suggestedName: ntscified(mediaBlob.name, appState.renderVideoCodec.value),
+            suggestedName: ntscified(mediaBlob.name, appState.renderVideoCodec.value, appState.settings.video_standard?.value),
             startIn: 'videos',
             id: 'save-video',
         }).then(handle => {

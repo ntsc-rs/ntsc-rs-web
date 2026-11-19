@@ -158,7 +158,7 @@ dependencies = [
 [[package]]
 name = "ntsc-rs"
 version = "0.1.2"
-source = "git+https://github.com/ntsc-rs/ntsc-rs#8cfc51014092a6dc1da5eb0217bb9ae6516b124e"
+source = "git+https://github.com/slopcorp-cs24/ntsc-rs#25ff764c8c0720fc3e4e0d7fac3681398e6c6445"
 dependencies = [
  "fearless_simd",
  "hifijson",
